@@ -99,11 +99,6 @@ private:
 	 */
 	FTimerHandle FireTimer;
 
-	UPROPERTY(EditAnywhere)
-	float FireDelay = .15f;
-
-	UPROPERTY(EditAnywhere)
-	bool bAutomatic = true;
 	bool bCanFire = true;
 
 	void StartFireTimer();
