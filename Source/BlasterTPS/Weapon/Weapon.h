@@ -55,6 +55,12 @@ public:
 	UPROPERTY(EditAnywhere)
 	float ZoomInterpSpeed = 20.f;
 
+	UPROPERTY(EditAnywhere)
+	float FireDelay = .15f;
+
+	UPROPERTY(EditAnywhere)
+	bool bAutomatic = true;
+
 	UFUNCTION()
 	void OnRep_WeaponState();
 
