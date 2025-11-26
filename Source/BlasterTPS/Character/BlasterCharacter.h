@@ -9,6 +9,7 @@
 #include "BlasterTPS/BlasterTypes/TurningInPlace.h"
 #include "BlasterTPS/Interface/InteractWithCrosshairsInterface.h"
 #include "Camera/CameraComponent.h"
+#include "Components/TimelineComponent.h"
 #include "BlasterCharacter.generated.h"
 
 
@@ -81,8 +82,13 @@ public:
 
 	bool IsAiming();
 
+	void SetOverlappingWeapon(AWeapon* Weapon);
+	AWeapon* GetEquippedWeapon();
+
 	UFUNCTION()
 	void ReceiveDamage(AActor* DamagedActor, float Damage, const UDamageType* DamageType, AController* InstigatedBy, AActor* DamageCauser);
+
+	void PollInit();
 
 	FORCEINLINE float GetAOYaw() const { return AO_Yaw; }
 	FORCEINLINE float GetAOPitch() const { return AO_Pitch; }
@@ -90,6 +96,9 @@ public:
 	FVector GetHitTarget() const;
 	FORCEINLINE UCameraComponent* GetFollowCamera() const { return FollowCamera; }
 	FORCEINLINE bool ShouldRotateRootBone() const { return bRotateRootBone; }
+	FORCEINLINE bool IsElimmed() const { return bElimmed; }
+	FORCEINLINE float GetHealth() const { return Health; }
+	FORCEINLINE float GetMaxHealth() const { return MaxHealth; }
 
 protected:
 	// Called when the game starts or when spawned
@@ -116,10 +125,18 @@ public:
 
 	void PlayHitReactMontage();
 
+	void PlayElimMontage();
+
 	//UFUNCTION(NetMulticast, Unreliable)
 	//void MulticastHit();
 
 	virtual void OnRep_ReplicateMovement() override;
+
+	void Elim();
+	UFUNCTION(NetMulticast, Reliable)
+	void MulticastElim();
+
+	virtual void Destroyed() override;
 
 private:
 	UPROPERTY(VisibleAnywhere, Category=Camera)
@@ -158,6 +175,9 @@ private:
 	UPROPERTY(EditAnywhere, Category = Combat)
 	UAnimMontage* HitReactMontage;
 
+	UPROPERTY(EditAnywhere, Category = Combat)
+	UAnimMontage* ElimMontage;
+
 	void HideCameraIfCharacterClose();
 
 	UPROPERTY(EditAnywhere)
@@ -186,7 +206,49 @@ private:
 	UPROPERTY()
 	class ABlasterPlayerController* BlasterPlayerController;
 
-public:
-	void SetOverlappingWeapon(AWeapon* Weapon);
-	AWeapon* GetEquippedWeapon();
+	bool bElimmed = false;
+
+	FTimerHandle ElimTimer;
+
+	UPROPERTY(EditDefaultsOnly)
+	float ElimDelay = 3.f;
+
+	void ElimTimerFinished();
+
+	/*
+	 * Dissolve effect
+	 */
+	UPROPERTY(VisibleAnywhere)
+	UTimelineComponent* DissolveTimeline;
+
+	FOnTimelineFloat DissolveTrack;
+
+	UPROPERTY(EditAnywhere)
+	UCurveFloat* DissolveCurve;
+
+	UFUNCTION()
+	void UpdateDissolveMaterial(float DissolveValue);
+
+	void StartDissolve();
+
+	UPROPERTY(VisibleAnywhere, Category=Elim)
+	UMaterialInstanceDynamic* DynamicDissolveMaterialInstance;
+
+	UPROPERTY(EditAnywhere, Category = Elim)
+	UMaterialInstance* DissolveMaterialInstance;
+
+	/*
+	 * Elim bot
+	 */
+	UPROPERTY(EditAnywhere)
+	UParticleSystem* ElimBotEffect;
+
+	UPROPERTY(VisibleAnywhere)
+	UParticleSystemComponent* ElimBotComponent;
+
+	UPROPERTY(EditAnywhere)
+	USoundCue* ElimBotSound;
+
+	UPROPERTY()
+	class ABlasterPlayerState* BlasterPlayerState;
 };

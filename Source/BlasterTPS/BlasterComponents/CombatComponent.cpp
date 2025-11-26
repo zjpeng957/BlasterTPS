@@ -41,6 +41,7 @@ void UCombatComponent::EquipWeapon(AWeapon* WeaponToEquip)
 
 	Character->GetCharacterMovement()->bOrientRotationToMovement = false;
 	Character->bUseControllerRotationYaw = true;
+	UE_LOG(LogTemp, Warning, TEXT("EquipWeapon:%d"), Character->GetLocalRole());
 }
 
 
@@ -87,6 +88,12 @@ void UCombatComponent::OnRep_EquippedWeapon()
 {
 	if (EquippedWeapon && Character)
 	{
+		EquippedWeapon->SetWeaponState(EWeaponState::EWS_Equipped);
+		const USkeletalMeshSocket* HandSocket = Character->GetMesh()->GetSocketByName(FName("RightHandSocket"));
+		if (HandSocket)
+		{
+			HandSocket->AttachActor(EquippedWeapon, Character->GetMesh());
+		}
 		Character->GetCharacterMovement()->bOrientRotationToMovement = false;
 		Character->bUseControllerRotationYaw = true;
 	}
@@ -118,7 +125,7 @@ void UCombatComponent::FireButtonPressed(bool bPressed)
 void UCombatComponent::ServerFire_Implementation(const FVector_NetQuantize& TraceHitTarget)
 {
 	MulticastFire(TraceHitTarget);
-	UE_LOG(LogTemp, Warning, TEXT("server fire:%d"), Character->GetLocalRole());
+	//UE_LOG(LogTemp, Warning, TEXT("server fire:%d"), Character->GetLocalRole());
 }
 
 void UCombatComponent::MulticastFire_Implementation(const FVector_NetQuantize& TraceHitTarget)
@@ -129,7 +136,7 @@ void UCombatComponent::MulticastFire_Implementation(const FVector_NetQuantize& T
 		Character->PlayFireMontage(bAiming);
 		EquippedWeapon->Fire(TraceHitTarget);
 	}
-	UE_LOG(LogTemp, Warning, TEXT("multicast fire:%d %d"), Character->GetLocalRole(), bFireButtonPressed);
+	//UE_LOG(LogTemp, Warning, TEXT("multicast fire:%d %d"), Character->GetLocalRole(), bFireButtonPressed);
 }
 
 void UCombatComponent::TraceUnderCrosshairs(FHitResult& TraceHitResult)

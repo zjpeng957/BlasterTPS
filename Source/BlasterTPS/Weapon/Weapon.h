@@ -63,12 +63,10 @@ public:
 
 	UFUNCTION()
 	void OnRep_WeaponState();
-
 	void ShowPickupWidget(bool bShowWidget);
-
 	void SetWeaponState(EWeaponState State);
-
 	virtual void Fire(const FVector& HitTarget);
+	void Dropped();
 
 	FORCEINLINE class USphereComponent* GetAreaSphere() const { return AreaCollision; }
 	FORCEINLINE USkeletalMeshComponent* GetWeaponMesh() const { return WeaponMesh; }
