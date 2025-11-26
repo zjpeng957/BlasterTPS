@@ -11,6 +11,7 @@
 #include "Camera/CameraComponent.h"
 #include "BlasterCharacter.generated.h"
 
+
 UCLASS()
 class BLASTERTPS_API ABlasterCharacter : public ACharacter, public IInteractWithCrosshairsInterface
 {
@@ -80,6 +81,9 @@ public:
 
 	bool IsAiming();
 
+	UFUNCTION()
+	void ReceiveDamage(AActor* DamagedActor, float Damage, const UDamageType* DamageType, AController* InstigatedBy, AActor* DamageCauser);
+
 	FORCEINLINE float GetAOYaw() const { return AO_Yaw; }
 	FORCEINLINE float GetAOPitch() const { return AO_Pitch; }
 	FORCEINLINE ETurningInPlace GetTurningInPlace() const { return TurningInPlace; }
@@ -112,8 +116,8 @@ public:
 
 	void PlayHitReactMontage();
 
-	UFUNCTION(NetMulticast, Unreliable)
-	void MulticastHit();
+	//UFUNCTION(NetMulticast, Unreliable)
+	//void MulticastHit();
 
 	virtual void OnRep_ReplicateMovement() override;
 
@@ -167,6 +171,20 @@ private:
 	float TimeSinceLastMovementReplication;
 
 	float CalculateSpeed();
+
+	UPROPERTY(EditAnywhere, Category="Player stats")
+	float MaxHealth = 100.f;
+
+	UPROPERTY(ReplicatedUsing = OnRep_Health, VisibleAnywhere, Category = "Player stats")
+	float Health = 100.f;
+
+	UFUNCTION()
+	void OnRep_Health();
+
+	void UpdateHUDHealth();
+
+	UPROPERTY()
+	class ABlasterPlayerController* BlasterPlayerController;
 
 public:
 	void SetOverlappingWeapon(AWeapon* Weapon);

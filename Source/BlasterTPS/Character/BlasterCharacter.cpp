@@ -14,6 +14,7 @@
 #include <Kismet/KismetMathLibrary.h>
 
 #include "BlasterTPS/BlasterTPS.h"
+#include "BlasterTPS/PlayerController/BlasterPlayerController.h"
 
 // Sets default values
 ABlasterCharacter::ABlasterCharacter()
@@ -63,14 +64,18 @@ void ABlasterCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
-	APlayerController* PlayerController = Cast<APlayerController>(Controller);
-	if (PlayerController)
+	UpdateHUDHealth();
+	BlasterPlayerController = BlasterPlayerController == nullptr ? Cast<ABlasterPlayerController>(Controller) : BlasterPlayerController;
+	if (BlasterPlayerController)
 	{
-		UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PlayerController->GetLocalPlayer());
-		if (Subsystem)
+		if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(BlasterPlayerController->GetLocalPlayer()))
 		{
 			Subsystem->AddMappingContext(DefaultMappingContext, 0);
 		}
+	}
+	if (HasAuthority())
+	{
+		OnTakeAnyDamage.AddDynamic(this, &ABlasterCharacter::ReceiveDamage);
 	}
 }
 
@@ -245,6 +250,7 @@ void ABlasterCharacter::GetLifetimeReplicatedProps(TArray<class FLifetimePropert
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME_CONDITION(ABlasterCharacter, OverlappingWeapon, COND_OwnerOnly);
+	DOREPLIFETIME(ABlasterCharacter, Health);
 }
 
 void ABlasterCharacter::PostInitializeComponents()
@@ -280,6 +286,7 @@ void ABlasterCharacter::PlayHitReactMontage()
 		AnimInstance->Montage_Play(HitReactMontage);
 		FName SectionName("FromFront");
 		AnimInstance->Montage_JumpToSection(SectionName);
+		UE_LOG(LogTemp, Warning, TEXT("play hit react"));
 	}
 }
 
@@ -387,6 +394,15 @@ bool ABlasterCharacter::IsAiming()
 	return (Combat && Combat->bAiming);
 }
 
+void ABlasterCharacter::ReceiveDamage(AActor* DamagedActor, float Damage, const UDamageType* DamageType,
+	AController* InstigatedBy, AActor* DamageCauser)
+{
+	Health = FMath::Clamp(Health - Damage, 0, MaxHealth);
+
+	UpdateHUDHealth();
+	PlayHitReactMontage();
+}
+
 void ABlasterCharacter::TurnInPlace(float DeltaTime)
 {
 	if (AO_Yaw>90.f)
@@ -409,10 +425,10 @@ void ABlasterCharacter::TurnInPlace(float DeltaTime)
 	}
 }
 
-void ABlasterCharacter::MulticastHit_Implementation()
-{
-	PlayHitReactMontage();
-}
+//void ABlasterCharacter::MulticastHit_Implementation()
+//{
+//	PlayHitReactMontage();
+//}
 
 void ABlasterCharacter::HideCameraIfCharacterClose()
 {
@@ -431,6 +447,21 @@ float ABlasterCharacter::CalculateSpeed()
 	FVector Velocity = GetVelocity();
 	Velocity.Z = 0;
 	return Velocity.Size();
+}
+
+void ABlasterCharacter::OnRep_Health()
+{
+	UpdateHUDHealth();
+	PlayHitReactMontage();
+}
+
+void ABlasterCharacter::UpdateHUDHealth()
+{
+	BlasterPlayerController = BlasterPlayerController == nullptr ? Cast<ABlasterPlayerController>(Controller) : BlasterPlayerController;
+	if (BlasterPlayerController)
+	{
+		BlasterPlayerController->SetHUDHealth(Health, MaxHealth);
+	}
 }
 
 void ABlasterCharacter::SetOverlappingWeapon(AWeapon* Weapon)
