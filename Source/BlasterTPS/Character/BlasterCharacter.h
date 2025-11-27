@@ -74,7 +74,7 @@ public:
 
 	void FireButtonReleased(const FInputActionValue& Value);
 
-	//void ReloadButtonPressed(const FInputActionValue& Value);
+	void ReloadButtonPressed(const FInputActionValue& Value);
 
 	//void ThrowGrenadeButtonPressed(const FInputActionValue& Value);
 
@@ -127,6 +127,7 @@ public:
 
 	void PlayElimMontage();
 
+	void PlayReloadMontage();
 	//UFUNCTION(NetMulticast, Unreliable)
 	//void MulticastHit();
 
@@ -169,6 +170,9 @@ private:
 
 	void TurnInPlace(float DeltaTime);
 
+	/*
+	 * Animation Montages
+	 */
 	UPROPERTY(EditAnywhere, Category=Combat)
 	class UAnimMontage* FireWeaponMontage;
 
@@ -177,6 +181,9 @@ private:
 
 	UPROPERTY(EditAnywhere, Category = Combat)
 	UAnimMontage* ElimMontage;
+
+	UPROPERTY(EditAnywhere, Category = Combat)
+	UAnimMontage* ReloadMontage;
 
 	void HideCameraIfCharacterClose();
 

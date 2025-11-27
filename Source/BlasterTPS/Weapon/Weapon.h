@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "WeaponTypes.h"
 #include "BlasterTPS/HUD/BlasterHUD.h"
 #include "GameFramework/Actor.h"
 #include "Weapon.generated.h"
@@ -67,11 +68,18 @@ public:
 	void SetWeaponState(EWeaponState State);
 	virtual void Fire(const FVector& HitTarget);
 	void Dropped();
+	UFUNCTION()
+	void OnRep_Ammo();
+	void SpendRound();
+	virtual void OnRep_Owner() override;
+	void SetHUDAmmo();
 
 	FORCEINLINE class USphereComponent* GetAreaSphere() const { return AreaCollision; }
 	FORCEINLINE USkeletalMeshComponent* GetWeaponMesh() const { return WeaponMesh; }
 	FORCEINLINE float GetZoomFOV() const { return ZoomFOV; }
 	FORCEINLINE float GetZoomInterpSpeed() const { return ZoomInterpSpeed; }
+	FORCEINLINE bool IsAmmoEmpty() const { return Ammo <= 0; }
+	FORCEINLINE EWeaponType GetWeaponType() const { return WeaponType; }
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
@@ -114,4 +122,18 @@ private:
 
 	UPROPERTY(EditAnywhere)
 	TSubclassOf<class ACasing> CasingClass;
+
+	UPROPERTY(EditAnywhere, ReplicatedUsing=OnRep_Ammo)
+	int32 Ammo;
+
+	UPROPERTY(EditAnywhere)
+	int32 MagCapacity;
+
+	UPROPERTY()
+	class ABlasterCharacter* BlasterOwnerCharacter;
+	UPROPERTY()
+	class ABlasterPlayerController* BlasterOwnerController;
+
+	UPROPERTY(EditAnywhere)
+	EWeaponType WeaponType;
 };
