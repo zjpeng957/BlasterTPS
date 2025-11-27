@@ -6,6 +6,7 @@
 #include "GameFramework/Character.h"
 #include "EnhancedInputComponent.h"
 #include "InputMappingContext.h"
+#include "BlasterTPS/BlasterTypes/CombatState.h"
 #include "BlasterTPS/BlasterTypes/TurningInPlace.h"
 #include "BlasterTPS/Interface/InteractWithCrosshairsInterface.h"
 #include "Camera/CameraComponent.h"
@@ -99,6 +100,7 @@ public:
 	FORCEINLINE bool IsElimmed() const { return bElimmed; }
 	FORCEINLINE float GetHealth() const { return Health; }
 	FORCEINLINE float GetMaxHealth() const { return MaxHealth; }
+	ECombatState GetCombatState() const;
 
 protected:
 	// Called when the game starts or when spawned

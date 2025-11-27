@@ -62,6 +62,9 @@ public:
 	UPROPERTY(EditAnywhere)
 	bool bAutomatic = true;
 
+	UPROPERTY(EditAnywhere)
+	class USoundCue* EquipSound;
+
 	UFUNCTION()
 	void OnRep_WeaponState();
 	void ShowPickupWidget(bool bShowWidget);
@@ -73,6 +76,7 @@ public:
 	void SpendRound();
 	virtual void OnRep_Owner() override;
 	void SetHUDAmmo();
+	void AddAmmo(int32 AmmoToAdd);
 
 	FORCEINLINE class USphereComponent* GetAreaSphere() const { return AreaCollision; }
 	FORCEINLINE USkeletalMeshComponent* GetWeaponMesh() const { return WeaponMesh; }
@@ -80,6 +84,8 @@ public:
 	FORCEINLINE float GetZoomInterpSpeed() const { return ZoomInterpSpeed; }
 	FORCEINLINE bool IsAmmoEmpty() const { return Ammo <= 0; }
 	FORCEINLINE EWeaponType GetWeaponType() const { return WeaponType; }
+	FORCEINLINE int32 GetAmmo() const { return Ammo; }
+	FORCEINLINE int32 GetMagCapacity() const { return MagCapacity; }
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;

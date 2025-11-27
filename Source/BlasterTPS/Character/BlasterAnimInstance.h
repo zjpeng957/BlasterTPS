@@ -78,4 +78,12 @@ private:
 	UPROPERTY(BlueprintReadOnly, Category = Movement, Meta = (AllowPrivateAccess = "true"))
 	bool bElimmed;
 
+	UPROPERTY(BlueprintReadOnly, Category = Movement, Meta = (AllowPrivateAccess = "true"))
+	bool bUseFABRIK;
+
+	UPROPERTY(BlueprintReadOnly, Category = Movement, Meta = (AllowPrivateAccess = "true"))
+	bool bUseAimOffsets;
+
+	UPROPERTY(BlueprintReadOnly, Category = Movement, Meta = (AllowPrivateAccess = "true"))
+	bool bTransformRightHand;
 };

@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "BlasterTPS/BlasterTypes/CombatState.h"
 #include "BlasterTPS/HUD/BlasterHUD.h"
 #include "BlasterTPS/Weapon/WeaponTypes.h"
 #include "Components/ActorComponent.h"
@@ -23,6 +24,9 @@ public:
 
 	void EquipWeapon(AWeapon* WeaponToEquip);
 	void Reload();
+
+	UFUNCTION(BlueprintCallable)
+	void FinishReloading();
 
 protected:
 	virtual void BeginPlay() override;
@@ -49,6 +53,10 @@ protected:
 
 	UFUNCTION(Server, Reliable)
 	void ServerReload();
+
+	void HandleReload();
+
+	int32 AmountToReload();
 
 public:	
 	// Called every frame
@@ -125,4 +133,12 @@ private:
 	int32 StartingAmmo;
 
 	void InitializeCarriedAmmo();
+
+	UPROPERTY(ReplicatedUsing = OnRep_CombatState)
+	ECombatState CombatState = ECombatState::ECS_Unoccupied;
+
+	UFUNCTION()
+	void OnRep_CombatState();
+
+	void UpdateAmmoValues();
 };
