@@ -6,6 +6,7 @@
 #include "GameFramework/Character.h"
 #include "EnhancedInputComponent.h"
 #include "InputMappingContext.h"
+#include "BlasterTPS/BlasterComponents/CombatComponent.h"
 #include "BlasterTPS/BlasterTypes/CombatState.h"
 #include "BlasterTPS/BlasterTypes/TurningInPlace.h"
 #include "BlasterTPS/Interface/InteractWithCrosshairsInterface.h"
@@ -23,6 +24,7 @@ public:
 	// Sets default values for this character's properties
 	ABlasterCharacter();
 
+	UPROPERTY(Replicated)
 	bool bDisableGameplay = false;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Input")
@@ -84,12 +86,13 @@ public:
 	bool IsAiming();
 
 	void SetOverlappingWeapon(AWeapon* Weapon);
-	AWeapon* GetEquippedWeapon();
+	AWeapon* GetEquippedWeapon() const;
 
 	UFUNCTION()
 	void ReceiveDamage(AActor* DamagedActor, float Damage, const UDamageType* DamageType, AController* InstigatedBy, AActor* DamageCauser);
 
 	void PollInit();
+	void RotateInPlace(float DeltaTime);
 
 	FORCEINLINE float GetAOYaw() const { return AO_Yaw; }
 	FORCEINLINE float GetAOPitch() const { return AO_Pitch; }
@@ -100,6 +103,8 @@ public:
 	FORCEINLINE bool IsElimmed() const { return bElimmed; }
 	FORCEINLINE float GetHealth() const { return Health; }
 	FORCEINLINE float GetMaxHealth() const { return MaxHealth; }
+	FORCEINLINE UCombatComponent* GetCombat() const { return Combat; }
+	FORCEINLINE bool GetDisableGameplay() const { return bDisableGameplay; }
 	ECombatState GetCombatState() const;
 
 protected:
