@@ -218,7 +218,6 @@ void UCombatComponent::OnRep_EquippedWeapon()
 
 void UCombatComponent::Fire()
 {
-	UE_LOG(LogTemp, Warning, TEXT("can fire:%d %d %d"), EquippedWeapon->IsAmmoEmpty(), bCanFire, CombatState);
 	if (CanFire())
 	{
 		if (EquippedWeapon)
@@ -447,5 +446,6 @@ void UCombatComponent::InitializeCarriedAmmo()
 {
 	CarriedAmmoMap.Emplace(EWeaponType::EWT_AssaultRifle, StartingARAmmo);
 	CarriedAmmoMap.Emplace(EWeaponType::EWT_RocketLauncher, StartingRocketAmmo);
+	CarriedAmmoMap.Emplace(EWeaponType::EWT_Pistol, StartingPistolAmmo);
 }
 

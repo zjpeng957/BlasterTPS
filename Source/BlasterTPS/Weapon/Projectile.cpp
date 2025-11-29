@@ -6,7 +6,6 @@
 #include "BlasterTPS/BlasterTPS.h"
 #include "BlasterTPS/Character/BlasterCharacter.h"
 #include "Components/BoxComponent.h"
-#include "GameFramework/ProjectileMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
 
 // Sets default values
@@ -25,8 +24,7 @@ AProjectile::AProjectile()
 	CollisionBox->SetCollisionResponseToChannel(ECC_WorldStatic, ECR_Block);
 	//CollisionBox->SetCollisionResponseToChannel(ECC_Pawn, ECR_Block);
 	CollisionBox->SetCollisionResponseToChannel(ECC_SKELETAL_MESH, ECR_Block);
-	ProjectileMovementComponent = CreateDefaultSubobject<UProjectileMovementComponent>(TEXT("ProjectileMovementComponent"));
-	ProjectileMovementComponent->bRotationFollowsVelocity = true;
+	
 }
 
 // Called when the game starts or when spawned
