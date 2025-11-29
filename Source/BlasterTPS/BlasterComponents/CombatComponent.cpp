@@ -80,6 +80,7 @@ void UCombatComponent::Reload()
 
 void UCombatComponent::FinishReloading()
 {
+	UE_LOG(LogTemp, Warning, TEXT("finish reloading:%d"), Character && Character->HasAuthority());
 	if (Character == nullptr) return;
 	if (Character->HasAuthority())
 	{
@@ -117,6 +118,7 @@ int32 UCombatComponent::AmountToReload()
 
 void UCombatComponent::OnRep_CombatState()
 {
+	UE_LOG(LogTemp, Warning, TEXT("CombatState update:%d %d"), CombatState, Character->GetLocalRole());
 	switch (CombatState)
 	{
 	case ECombatState::ECS_Reloading:
@@ -216,6 +218,7 @@ void UCombatComponent::OnRep_EquippedWeapon()
 
 void UCombatComponent::Fire()
 {
+	UE_LOG(LogTemp, Warning, TEXT("can fire:%d %d %d"), EquippedWeapon->IsAmmoEmpty(), bCanFire, CombatState);
 	if (CanFire())
 	{
 		if (EquippedWeapon)
@@ -442,6 +445,7 @@ void UCombatComponent::OnRep_CarriedAmmo()
 
 void UCombatComponent::InitializeCarriedAmmo()
 {
-	CarriedAmmoMap.Emplace(EWeaponType::EWT_AssaultRifle, 30);
+	CarriedAmmoMap.Emplace(EWeaponType::EWT_AssaultRifle, StartingARAmmo);
+	CarriedAmmoMap.Emplace(EWeaponType::EWT_RocketLauncher, StartingRocketAmmo);
 }
 
