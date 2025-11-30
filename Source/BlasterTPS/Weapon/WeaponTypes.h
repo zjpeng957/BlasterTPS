@@ -1,5 +1,7 @@
 #pragma once
 
+constexpr float TRACE_LEN = 80000.f;
+
 UENUM(BlueprintType)
 enum class EWeaponType : uint8
 {
