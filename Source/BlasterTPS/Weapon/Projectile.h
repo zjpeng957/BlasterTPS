@@ -20,6 +20,10 @@ public:
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
+	void SpawnTrailSystem();
+	void DestroyTimerFinished();
+	void StartDestroyTimer();
+	void ExplodeDamage();
 
 	UPROPERTY(EditAnywhere)
 	float Damage = 20.f;
@@ -39,11 +43,30 @@ protected:
 	UPROPERTY(VisibleAnywhere)
 	class UProjectileMovementComponent* ProjectileMovementComponent;
 
-private:
 	UPROPERTY(EditAnywhere)
-	class UParticleSystem* Tracer;
+	class UNiagaraSystem* TrailSystem;
+
+	UPROPERTY()
+	class UNiagaraComponent* TrailSystemComponent;
+
+	UPROPERTY(VisibleAnywhere)
+	UStaticMeshComponent* ProjectileMesh;
 
 	UPROPERTY(EditAnywhere)
-	class UParticleSystemComponent* TracerComponent;
+	float DamageInnerRadius = 200.f;
+
+	UPROPERTY(EditAnywhere)
+	float DamageOuterRadius = 500.f;
+private:
+	UPROPERTY(EditAnywhere)
+	UParticleSystem* Tracer;
+
+	UPROPERTY(EditAnywhere)
+	UParticleSystemComponent* TracerComponent;
+
+	FTimerHandle DestroyTimer;
+
+	UPROPERTY(EditAnywhere)
+	float DestroyTime = 3.f;
 
 };
