@@ -58,6 +58,10 @@ ABlasterCharacter::ABlasterCharacter()
 	MinNetUpdateFrequency = 33.f;
 
 	DissolveTimeline = CreateDefaultSubobject<UTimelineComponent>(TEXT("DissolveTimeline"));
+
+	AttachedGrenade = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("AttachedGrenade"));
+	AttachedGrenade->SetupAttachment(GetMesh(), FName("GrenadeSocket"));
+	AttachedGrenade->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 }
 
 FVector ABlasterCharacter::GetHitTarget() const
@@ -86,18 +90,14 @@ void ABlasterCharacter::BeginPlay()
 			Subsystem->AddMappingContext(DefaultMappingContext, 0);
 			UE_LOG(LogTemp, Warning, TEXT("Added Input Mapping Context:%d %d"), IsLocallyControlled(), HasAuthority());
 		}
-		else
-		{
-			UE_LOG(LogTemp, Warning, TEXT("not blaster sub sys:%d %d"), IsLocallyControlled(), HasAuthority());
-		}
-	}
-	else
-	{
-		UE_LOG(LogTemp, Warning, TEXT("not blaster controller:%d %d"), IsLocallyControlled(), HasAuthority());
 	}
 	if (HasAuthority())
 	{
 		OnTakeAnyDamage.AddDynamic(this, &ABlasterCharacter::ReceiveDamage);
+	}
+	if (AttachedGrenade)
+	{
+		AttachedGrenade->SetVisibility(false);
 	}
 }
 
@@ -211,7 +211,7 @@ void ABlasterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 		EnhancedInputComponent->BindAction(FireAction, ETriggerEvent::Started, this, &ABlasterCharacter::FireButtonPressed);
 		EnhancedInputComponent->BindAction(FireAction, ETriggerEvent::Completed, this, &ABlasterCharacter::FireButtonReleased);
 		EnhancedInputComponent->BindAction(ReloadAction, ETriggerEvent::Started, this, &ABlasterCharacter::ReloadButtonPressed);
-		//EnhancedInputComponent->BindAction(ThrowGrenadeAction, ETriggerEvent::Started, this, &ABlasterCharacter::ThrowGrenadeButtonPressed);
+		EnhancedInputComponent->BindAction(ThrowGrenadeAction, ETriggerEvent::Started, this, &ABlasterCharacter::ThrowGrenadeButtonPressed);
 
 	}
 }
@@ -354,6 +354,15 @@ void ABlasterCharacter::PlayReloadMontage()
 			break;
 		}
 		AnimInstance->Montage_JumpToSection(SectionName);
+	}
+}
+
+void ABlasterCharacter::PlayThrowGrenadeMontage()
+{
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if (AnimInstance && ThrowGrenadeMontage)
+	{
+		AnimInstance->Montage_Play(ThrowGrenadeMontage);
 	}
 }
 
@@ -554,6 +563,14 @@ void ABlasterCharacter::ReloadButtonPressed(const FInputActionValue& Value)
 	if (Combat && Combat->EquippedWeapon)
 	{
 		Combat->Reload();
+	}
+}
+
+void ABlasterCharacter::ThrowGrenadeButtonPressed(const FInputActionValue& Value)
+{
+	if (Combat)
+	{
+		Combat->ThrowGrenade();
 	}
 }
 

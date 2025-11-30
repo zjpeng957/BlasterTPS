@@ -79,7 +79,7 @@ public:
 
 	void ReloadButtonPressed(const FInputActionValue& Value);
 
-	//void ThrowGrenadeButtonPressed(const FInputActionValue& Value);
+	void ThrowGrenadeButtonPressed(const FInputActionValue& Value);
 
 	bool IsWeaponEquipped();
 
@@ -108,7 +108,9 @@ public:
 	FORCEINLINE float GetMaxHealth() const { return MaxHealth; }
 	FORCEINLINE UCombatComponent* GetCombat() const { return Combat; }
 	FORCEINLINE bool GetDisableGameplay() const { return bDisableGameplay; }
+	FORCEINLINE UAnimMontage* GetReloadMontage()const { return ReloadMontage; }
 	ECombatState GetCombatState() const;
+	FORCEINLINE UStaticMeshComponent* GetAttachedGrenade()const { return AttachedGrenade; }
 
 protected:
 	// Called when the game starts or when spawned
@@ -138,8 +140,8 @@ public:
 	void PlayElimMontage();
 
 	void PlayReloadMontage();
-	//UFUNCTION(NetMulticast, Unreliable)
-	//void MulticastHit();
+	
+	void PlayThrowGrenadeMontage();
 
 	virtual void OnRep_ReplicateMovement() override;
 
@@ -194,6 +196,9 @@ private:
 
 	UPROPERTY(EditAnywhere, Category = Combat)
 	UAnimMontage* ReloadMontage;
+
+	UPROPERTY(EditAnywhere, Category = Combat)
+	UAnimMontage* ThrowGrenadeMontage;
 
 	void HideCameraIfCharacterClose();
 
@@ -268,4 +273,9 @@ private:
 
 	UPROPERTY()
 	class ABlasterPlayerState* BlasterPlayerState;
+	/**
+	* Grenade
+	*/
+	UPROPERTY(EditAnywhere)
+	UStaticMeshComponent* AttachedGrenade;
 };

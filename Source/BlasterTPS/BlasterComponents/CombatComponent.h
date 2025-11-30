@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "BlasterTPS/BlasterTypes/CombatState.h"
 #include "BlasterTPS/HUD/BlasterHUD.h"
+#include "BlasterTPS/Weapon/Projectile.h"
 #include "BlasterTPS/Weapon/WeaponTypes.h"
 #include "Components/ActorComponent.h"
 #include "CombatComponent.generated.h"
@@ -29,6 +30,19 @@ public:
 	void FinishReloading();
 
 	void FireButtonPressed(bool bPressed);
+
+	void JumpToShotgunEnd();
+
+	UFUNCTION(BlueprintCallable)
+	void ThrowGrenadeFinished();
+
+	UFUNCTION(BlueprintCallable)
+	void LaunchGrenade();
+
+	UFUNCTION(Server, Reliable)
+	void ServerLaunchGrenade(const FVector_NetQuantize& Target);
+
+	FORCEINLINE int32 GetGrenades() const { return Grenades; }
 protected:
 	virtual void BeginPlay() override;
 	void SetAiming(bool bIsAiming);
@@ -55,7 +69,27 @@ protected:
 
 	void HandleReload();
 
-	int32 AmountToReload();
+	int32 AmountToReload() const;
+
+	UFUNCTION(BlueprintCallable)
+	void ShotgunShellReload();
+
+	void ThrowGrenade();
+
+	UFUNCTION(Server, Reliable)
+	void ServerThrowGrenade();
+
+	UPROPERTY(EditAnywhere)
+	TSubclassOf<AProjectile> GrenadeClass;
+
+	void ShowAttachedGrenade(bool bShowGrenade);
+
+	void DropEquippedWeapon();
+	void AttachActorToRightHand(AActor* ActorToAttach);
+	void AttachActorToLeftHand(AActor* ActorToAttach);
+	void UpdateCarriedAmmo();
+	void PlayEquippedWeaponSound();
+	void ReloadEmptyWeapon();
 
 public:	
 	// Called every frame
@@ -158,4 +192,16 @@ private:
 	void OnRep_CombatState();
 
 	void UpdateAmmoValues();
+	void UpdateShotgunAmmoValues();
+
+	UPROPERTY(ReplicatedUsing = OnRep_Grenades)
+	int32 Grenades = 4;
+
+	UFUNCTION()
+	void OnRep_Grenades();
+
+	UPROPERTY(EditAnywhere)
+	int32 MaxGrenades = 4;
+
+	void UpdateHUDGrenades();
 };

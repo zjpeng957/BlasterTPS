@@ -78,11 +78,17 @@ public:
 	void SetHUDAmmo();
 	void AddAmmo(int32 AmmoToAdd);
 
+	/**
+	* Enable or disable custom depth
+	*/
+	void EnableCustomDepth(bool bEnable);
+
 	FORCEINLINE class USphereComponent* GetAreaSphere() const { return AreaCollision; }
 	FORCEINLINE USkeletalMeshComponent* GetWeaponMesh() const { return WeaponMesh; }
 	FORCEINLINE float GetZoomFOV() const { return ZoomFOV; }
 	FORCEINLINE float GetZoomInterpSpeed() const { return ZoomInterpSpeed; }
 	FORCEINLINE bool IsAmmoEmpty() const { return Ammo <= 0; }
+	FORCEINLINE bool IsAmmoFull() const { return Ammo >= MagCapacity; }
 	FORCEINLINE EWeaponType GetWeaponType() const { return WeaponType; }
 	FORCEINLINE int32 GetAmmo() const { return Ammo; }
 	FORCEINLINE int32 GetMagCapacity() const { return MagCapacity; }
