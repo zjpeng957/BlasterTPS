@@ -14,6 +14,7 @@
 #include <Kismet/KismetMathLibrary.h>
 
 #include "BlasterTPS/BlasterTPS.h"
+#include "BlasterTPS/BlasterComponents/BuffComponent.h"
 #include "BlasterTPS/GameMode/BlasterGameMode.h"
 #include "BlasterTPS/PlayerController/BlasterPlayerController.h"
 #include "BlasterTPS/PlayerState/BlasterPlayerState.h"
@@ -44,6 +45,9 @@ ABlasterCharacter::ABlasterCharacter()
 
 	Combat = CreateDefaultSubobject<UCombatComponent>(TEXT("CombatComponent"));
 	Combat->SetIsReplicated(true);
+
+	Buff = CreateDefaultSubobject<UBuffComponent>(TEXT("BuffComponent"));
+	Buff->SetIsReplicated(true);
 
 	GetCharacterMovement()->NavAgentProps.bCanCrouch = true;
 	GetCharacterMovement()->RotationRate = FRotator(0.f, 0.f, 850.f);
@@ -277,12 +281,16 @@ void ABlasterCharacter::GetLifetimeReplicatedProps(TArray<class FLifetimePropert
 void ABlasterCharacter::PostInitializeComponents()
 {
 	Super::PostInitializeComponents();
-	
-	UE_LOG(LogTemp, Warning, TEXT("PostInitComp_%s: Combat=%p Role=%d RemoteRole=%d HasAuthority=%d"),
-		*GetName(), Combat, (int32)GetLocalRole(), (int32)GetRemoteRole(), HasAuthority());
+
 	if (Combat)
 	{
 		Combat->Character = this;
+	}
+	if (Buff)
+	{
+		Buff->Character = this;
+		Buff->SetInitialSpeed(GetCharacterMovement()->MaxWalkSpeed, GetCharacterMovement()->MaxWalkSpeedCrouched);
+		Buff->SetInitialJumpVelocity(GetCharacterMovement()->JumpZVelocity);
 	}
 }
 
@@ -691,10 +699,13 @@ float ABlasterCharacter::CalculateSpeed()
 	return Velocity.Size();
 }
 
-void ABlasterCharacter::OnRep_Health()
+void ABlasterCharacter::OnRep_Health(float LastHealth)
 {
 	UpdateHUDHealth();
-	PlayHitReactMontage();
+	if (Health < LastHealth)
+	{
+		PlayHitReactMontage();
+	}
 }
 
 void ABlasterCharacter::UpdateHUDHealth()

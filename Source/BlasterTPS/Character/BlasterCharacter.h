@@ -6,6 +6,7 @@
 #include "GameFramework/Character.h"
 #include "EnhancedInputComponent.h"
 #include "InputMappingContext.h"
+#include "BlasterTPS/BlasterComponents/BuffComponent.h"
 #include "BlasterTPS/BlasterComponents/CombatComponent.h"
 #include "BlasterTPS/BlasterTypes/CombatState.h"
 #include "BlasterTPS/BlasterTypes/TurningInPlace.h"
@@ -97,6 +98,8 @@ public:
 	UFUNCTION(BlueprintImplementableEvent)
 	void ShowSniperScopeWidget(bool bShowScope);
 
+	void UpdateHUDHealth();
+
 	FORCEINLINE float GetAOYaw() const { return AO_Yaw; }
 	FORCEINLINE float GetAOPitch() const { return AO_Pitch; }
 	FORCEINLINE ETurningInPlace GetTurningInPlace() const { return TurningInPlace; }
@@ -105,8 +108,10 @@ public:
 	FORCEINLINE bool ShouldRotateRootBone() const { return bRotateRootBone; }
 	FORCEINLINE bool IsElimmed() const { return bElimmed; }
 	FORCEINLINE float GetHealth() const { return Health; }
+	FORCEINLINE void SetHealth(float Amount) { Health = Amount; }
 	FORCEINLINE float GetMaxHealth() const { return MaxHealth; }
 	FORCEINLINE UCombatComponent* GetCombat() const { return Combat; }
+	FORCEINLINE UBuffComponent* GetBuff() const { return Buff; }
 	FORCEINLINE bool GetDisableGameplay() const { return bDisableGameplay; }
 	FORCEINLINE UAnimMontage* GetReloadMontage()const { return ReloadMontage; }
 	ECombatState GetCombatState() const;
@@ -170,6 +175,9 @@ private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = true))
 	UCombatComponent* Combat;
 
+	UPROPERTY(VisibleAnywhere)
+	class UBuffComponent* Buff;
+
 	UFUNCTION(Server, Reliable)
 	void ServerEquipButtonPressed();
 
@@ -221,9 +229,7 @@ private:
 	float Health = 100.f;
 
 	UFUNCTION()
-	void OnRep_Health();
-
-	void UpdateHUDHealth();
+	void OnRep_Health(float LastHealth);
 
 	UPROPERTY()
 	class ABlasterPlayerController* BlasterPlayerController;

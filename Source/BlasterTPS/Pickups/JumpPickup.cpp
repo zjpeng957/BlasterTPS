@@ -1,20 +1,20 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "AmmoPickup.h"
+#include "JumpPickup.h"
 
 #include "BlasterTPS/Character/BlasterCharacter.h"
 
-void AAmmoPickup::OnSphereOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
+void AJumpPickup::OnSphereOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
                                   UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
 	Super::OnSphereOverlap(OverlappedComponent, OtherActor, OtherComp, OtherBodyIndex, bFromSweep, SweepResult);
 
 	if (ABlasterCharacter* BlasterCharacter = Cast<ABlasterCharacter>(OtherActor))
 	{
-		if (UCombatComponent* Combat = BlasterCharacter->GetCombat())
+		if (UBuffComponent* Buff = BlasterCharacter->GetBuff())
 		{
-			Combat->PickupAmmo(WeaponType, AmmoAmount);
+			Buff->BuffJump(JumpZVelocityBuff, JumpBuffTime);
 		}
 	}
 	Destroy();
