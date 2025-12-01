@@ -15,7 +15,8 @@ class BLASTERTPS_API UBuffComponent : public UActorComponent
 public:	
 	friend class ABlasterCharacter;
 	UBuffComponent();
-	void Heal(float HealAMount, float HealingTime);
+	void Heal(float HealAmount, float HealingTime);
+	void ReplenishShield(float ShieldAmount, float ReplenishTime);
 	void BuffSpeed(float BuffBaseSpeed, float BuffCrouchSpeed, float BuffTime);
 	void SetInitialSpeed(float BaseSpeed, float CrouchSpeed);
 	void BuffJump(float JumpVelocity, float BuffTime);
@@ -24,6 +25,7 @@ protected:
 	// Called when the game starts
 	virtual void BeginPlay() override;
 	void HealRampUp(float DeltaTime);
+	void ShieldRampUp(float DeltaTime);
 public:	
 	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
@@ -39,6 +41,12 @@ private:
 	float HealthRate = 0;
 	float AmountToHeal = 0.f;
 
+	/*
+	 * Heal buff
+	 */
+	bool bReplenishShield = false;
+	float ShieldReplenishRate = 0;
+	float ShieldReplenishAmount = 0.f;
 	/*
 	 * Speed buff
 	 */

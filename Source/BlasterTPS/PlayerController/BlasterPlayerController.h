@@ -17,6 +17,7 @@ class BLASTERTPS_API ABlasterPlayerController : public APlayerController
 
 public:
 	void SetHUDHealth(float Health, float MaxHealth);
+	void SetHUDShield(float Shield, float MaxShield);
 	void SetHUDScore(float Score);
 	void SetHUDDefeats(int32 Defeats);
 	void SetHUDWeaponAmmo(int32 Ammo);
@@ -85,7 +86,14 @@ private:
 
 	float HUDHealth;
 	float HUDMaxHealth;
+	bool bInitializedHealth = false;
+	float HUDShield;
+	float HUDMaxShield;
+	bool bInitializedShield = false;
 	float HUDScore;
+	bool bInitializedScore = false;
 	int32 HUDDefeats;
+	bool bInitializedDefeats = false;
 	int32 HUDGrenades;
+	bool bInitializedGrenades = false;
 };
