@@ -65,6 +65,8 @@ public:
 	UPROPERTY(EditAnywhere)
 	class USoundCue* EquipSound;
 
+	bool bDestroyWeapon = false;
+
 	UFUNCTION()
 	void OnRep_WeaponState();
 	void ShowPickupWidget(bool bShowWidget);
@@ -95,6 +97,10 @@ public:
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
+	virtual void OnWeaponStateSet();
+	virtual void OnEquipped();
+	virtual void OnDropped();
+	virtual void OnEquippedSecondary();
 
 	UFUNCTION()
 	virtual void OnSphereOverlap(

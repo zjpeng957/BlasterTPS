@@ -24,6 +24,7 @@ public:
 	UCombatComponent();
 
 	void EquipWeapon(AWeapon* WeaponToEquip);
+	void SwapWeapons();
 	void Reload();
 
 	UFUNCTION(BlueprintCallable)
@@ -54,6 +55,10 @@ protected:
 
 	UFUNCTION()
 	void OnRep_EquippedWeapon();
+
+	UFUNCTION()
+	void OnRep_SecondaryWeapon();
+
 	void Fire();
 
 	UFUNCTION(Server, Reliable)
@@ -85,12 +90,14 @@ protected:
 	TSubclassOf<AProjectile> GrenadeClass;
 
 	void ShowAttachedGrenade(bool bShowGrenade);
-
+	void EquipPrimaryWeapon(AWeapon* WeaponToEquip);
+	void EquipSecondaryWeapon(AWeapon* WeaponToEquip);
 	void DropEquippedWeapon();
 	void AttachActorToRightHand(AActor* ActorToAttach);
 	void AttachActorToLeftHand(AActor* ActorToAttach);
+	void AttachActorToBackpack(AActor* ActorToAttach);
 	void UpdateCarriedAmmo();
-	void PlayEquippedWeaponSound();
+	void PlayEquippedWeaponSound(AWeapon* WeaponToEquip);
 	void ReloadEmptyWeapon();
 
 public:	
@@ -110,6 +117,9 @@ private:
 
 	UPROPERTY(ReplicatedUsing = OnRep_EquippedWeapon)
 	AWeapon* EquippedWeapon;
+
+	UPROPERTY(ReplicatedUsing = OnRep_SecondaryWeapon)
+	AWeapon* SecondaryWeapon;
 
 	UPROPERTY(Replicated)
 	bool bAiming;
@@ -209,4 +219,6 @@ private:
 	int32 MaxGrenades = 4;
 
 	void UpdateHUDGrenades();
+
+	FORCEINLINE bool ShouldSwapWeapons() const { return EquippedWeapon && SecondaryWeapon; }
 };

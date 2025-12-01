@@ -100,6 +100,8 @@ public:
 
 	void UpdateHUDHealth();
 	void UpdateHUDShield();
+	void UpdateHUDAmmo();
+	void SpawnDefaultWeapon() const;
 
 	FORCEINLINE float GetAOYaw() const { return AO_Yaw; }
 	FORCEINLINE float GetAOPitch() const { return AO_Pitch; }
@@ -131,6 +133,8 @@ protected:
 
 	void SimProxiesTurn();
 
+	void DropOrDestroyWeapon(AWeapon* Weapon);
+	void DropOrDestroyWeapons();
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
@@ -303,4 +307,7 @@ private:
 	*/
 	UPROPERTY(EditAnywhere)
 	UStaticMeshComponent* AttachedGrenade;
+
+	UPROPERTY(EditAnywhere)
+	TSubclassOf<AWeapon> DefaultWeaponClass;
 };
