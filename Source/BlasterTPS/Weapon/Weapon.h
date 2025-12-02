@@ -89,9 +89,7 @@ public:
 	void SetWeaponState(EWeaponState State);
 	virtual void Fire(const FVector& HitTarget);
 	void Dropped();
-	UFUNCTION()
-	void OnRep_Ammo();
-	void SpendRound();
+
 	virtual void OnRep_Owner() override;
 	void SetHUDAmmo();
 	void AddAmmo(int32 AmmoToAdd);
@@ -163,8 +161,19 @@ private:
 	UPROPERTY(EditAnywhere)
 	TSubclassOf<class ACasing> CasingClass;
 
-	UPROPERTY(EditAnywhere, ReplicatedUsing=OnRep_Ammo)
+	UPROPERTY(EditAnywhere)
 	int32 Ammo;
+
+	//The number of unprocessed server requests for Ammo
+	//The incremented in SpendRound,decremented in ClientUpdateAmmo
+	int32 Sequence = 0;
+	UFUNCTION(Client, Reliable)
+	void ClientUpdateAmmo(int32 ServerAmmo);
+
+	UFUNCTION(Client, Reliable)
+	void ClientAddAmmo(int32 AmmoToAdd);
+
+	void SpendRound();
 
 	UPROPERTY(EditAnywhere)
 	int32 MagCapacity;

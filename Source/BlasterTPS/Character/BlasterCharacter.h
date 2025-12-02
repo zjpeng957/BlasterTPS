@@ -122,7 +122,7 @@ public:
 	FORCEINLINE UAnimMontage* GetReloadMontage()const { return ReloadMontage; }
 	ECombatState GetCombatState() const;
 	FORCEINLINE UStaticMeshComponent* GetAttachedGrenade()const { return AttachedGrenade; }
-
+	bool IsLocallyReloading() const;
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;

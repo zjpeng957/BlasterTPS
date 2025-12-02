@@ -46,6 +46,8 @@ public:
 	FORCEINLINE int32 GetGrenades() const { return Grenades; }
 
 	void PickupAmmo(EWeaponType WeaponType, int32 AmmoAmount);
+
+	bool bLocallyReloading = false;
 protected:
 	virtual void BeginPlay() override;
 	void SetAiming(bool bIsAiming);
@@ -132,8 +134,13 @@ private:
 	UPROPERTY(ReplicatedUsing = OnRep_SecondaryWeapon)
 	AWeapon* SecondaryWeapon;
 
-	UPROPERTY(Replicated)
+	UPROPERTY(ReplicatedUsing = OnRep_Aiming)
 	bool bAiming;
+
+	bool bAimButtonPressed = false;
+
+	UFUNCTION()
+	void OnRep_Aiming();
 
 	UPROPERTY(EditAnywhere)
 	float BaseWalkSpeed;
@@ -174,7 +181,7 @@ private:
 	void StartFireTimer();
 	void FireTimerFinished();
 
-	bool CanFire();
+	bool CanFire() const;
 
 	// Carried ammo for the currently equipped weapon
 	UPROPERTY(ReplicatedUsing= OnRep_CarriedAmmo)
