@@ -34,7 +34,11 @@ public:
 	void HandleMatchHasStarted();
 	void HandleCooldown();
 	FORCEINLINE FName GetMatchState() const { return MatchState; }
-	
+
+	void HighPingWarning();
+	void StopHighPingWarning();
+	void CheckPing(float DeltaSeconds);
+
 protected:
 	virtual void BeginPlay() override;
 	void SetHUDTime();
@@ -100,4 +104,13 @@ private:
 	bool bInitializedCarriedAmmo = false;
 	float HUDWeaponAmmo;
 	bool bInitializedWeaponAmmo = false;
+
+	float HighPingRunningTime = 0.f;
+	float PingAnimationRunningTime = 0.f;
+	UPROPERTY(EditAnywhere)
+	float HighPingDuration = 5.f;
+	UPROPERTY(EditAnywhere)
+	float CheckPingFrequency = 20.f;
+	UPROPERTY(EditAnywhere)
+	float HighPingThreshold = 50.f;
 };

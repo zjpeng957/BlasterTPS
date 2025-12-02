@@ -44,4 +44,10 @@ public:
 
 	UPROPERTY(meta = (BindWidget))
 	class UTextBlock* ShieldText;
+
+	UPROPERTY(meta = (BindWidget))
+	class UImage* HighPingImage;
+
+	UPROPERTY(meta = (BindWidgetANim), Transient)
+	class UWidgetAnimation* HighPingAnimation;
 };

@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "WeaponTypes.h"
-#include "BlasterTPS/HUD/BlasterHUD.h"
+//#include "BlasterTPS/HUD/BlasterHUD.h"
 #include "GameFramework/Actor.h"
 #include "Weapon.generated.h"
 
@@ -15,6 +15,16 @@ enum class EWeaponState : uint8
 	EWS_Equipped UMETA(DisplayName = "Equipped"),
 	EWS_EquippedSecondary UMETA(DisplayName = "Equipped Secondary"),
 	EWS_Dropped UMETA(DisplayName = "Dropped"),
+
+	EWS_MAX UMETA(DisplayName = "DefaultMAX")
+};
+
+UENUM(BlueprintType)
+enum class EFireType : uint8
+{
+	EFT_HitScan UMETA(DisplayName = "Hit Scan Weapon"),
+	EFT_Projectile UMETA(DisplayName = "Projcetile Weapon"),
+	EFT_Shotgun UMETA(DisplayName = "Shotgun Weapon"),
 
 	EWS_MAX UMETA(DisplayName = "DefaultMAX")
 };
@@ -67,6 +77,12 @@ public:
 
 	bool bDestroyWeapon = false;
 
+	UPROPERTY(EditAnywhere)
+	EFireType FireType;
+
+	UPROPERTY(EditAnywhere, Category = "Weapon Scatter")
+	bool bUseScatter = false;
+
 	UFUNCTION()
 	void OnRep_WeaponState();
 	void ShowPickupWidget(bool bShowWidget);
@@ -79,7 +95,7 @@ public:
 	virtual void OnRep_Owner() override;
 	void SetHUDAmmo();
 	void AddAmmo(int32 AmmoToAdd);
-
+	FVector TraceEndWithScatter(const FVector& HitTarget);
 	/**
 	* Enable or disable custom depth
 	*/
@@ -120,6 +136,12 @@ protected:
 		int32 OtherBodyIndex
 	);
 
+	UPROPERTY(EditAnywhere, Category = "Weapon Scatter")
+	float DistanceToSphere = 800.f;
+
+	UPROPERTY(EditAnywhere, Category = "Weapon Scatter")
+	float SphereRadius = 75.f;
+
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
@@ -154,4 +176,5 @@ private:
 
 	UPROPERTY(EditAnywhere)
 	EWeaponType WeaponType;
+
 };

@@ -11,6 +11,7 @@
 #include "Animation/AnimationAsset.h"
 #include "BlasterTPS/PlayerController/BlasterPlayerController.h"
 #include "Engine/SkeletalMeshSocket.h"
+#include "Kismet/KismetMathLibrary.h"
 
 
 // Sets default values
@@ -152,7 +153,10 @@ void AWeapon::Fire(const FVector& HitTarget)
 			}
 		}
 	}
-	SpendRound();
+	if (HasAuthority())
+	{
+		SpendRound();
+	}
 }
 
 void AWeapon::Dropped()
@@ -232,13 +236,12 @@ void AWeapon::BeginPlay()
 	Super::BeginPlay();
 	ShowPickupWidget(false);
 
-	if (HasAuthority())
-	{
-		AreaCollision->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-		AreaCollision->SetCollisionResponseToChannel(ECC_Pawn, ECollisionResponse::ECR_Overlap);
-		AreaCollision->OnComponentBeginOverlap.AddDynamic(this, &AWeapon::OnSphereOverlap);
-		AreaCollision->OnComponentEndOverlap.AddDynamic(this, &AWeapon::OnSphereEndOverlap);
-	}
+
+	AreaCollision->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	AreaCollision->SetCollisionResponseToChannel(ECC_Pawn, ECollisionResponse::ECR_Overlap);
+	AreaCollision->OnComponentBeginOverlap.AddDynamic(this, &AWeapon::OnSphereOverlap);
+	AreaCollision->OnComponentEndOverlap.AddDynamic(this, &AWeapon::OnSphereEndOverlap);
+
 }
 
 void AWeapon::OnSphereOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
@@ -246,7 +249,6 @@ void AWeapon::OnSphereOverlap(UPrimitiveComponent* OverlappedComponent, AActor* 
 {
 	ABlasterCharacter* BlasterCharacter = Cast<ABlasterCharacter>(OtherActor);
 
-	UE_LOG(LogTemp, Warning, TEXT("OnSphereOverlap:%d"), BlasterCharacter->GetLocalRole())
 	if (BlasterCharacter&&PickupWidget)
 	{
 		BlasterCharacter->SetOverlappingWeapon(this);
@@ -277,3 +279,17 @@ void AWeapon::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLif
 	DOREPLIFETIME(AWeapon, Ammo);
 }
 
+FVector AWeapon::TraceEndWithScatter(const FVector& HitTarget)
+{
+	const USkeletalMeshSocket* MuzzleFlashSocket = GetWeaponMesh()->GetSocketByName("MuzzleFlash");
+	if (MuzzleFlashSocket == nullptr) return FVector();
+	const FTransform SocketTransform = MuzzleFlashSocket->GetSocketTransform(GetWeaponMesh());
+	const FVector TraceStart = SocketTransform.GetLocation();
+	const FVector ToTargetNormalized = (HitTarget - TraceStart).GetSafeNormal();
+	const FVector SphereCenter = TraceStart + ToTargetNormalized * DistanceToSphere;
+	const FVector RandVec = UKismetMathLibrary::RandomUnitVector() * FMath::FRandRange(0.f, SphereRadius);
+	const FVector EndLoc = SphereCenter + RandVec;
+	const FVector ToEndLoc = EndLoc - TraceStart;
+
+	return FVector(TraceStart + ToEndLoc * TRACE_LEN / ToEndLoc.Size());
+}

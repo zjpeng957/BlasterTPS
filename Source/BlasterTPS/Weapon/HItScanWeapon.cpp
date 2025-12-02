@@ -75,23 +75,12 @@ void AHItScanWeapon::Fire(const FVector& HitTarget)
 	}
 }
 
-FVector AHItScanWeapon::TraceEndWithScatter(const FVector& TraceStart, const FVector& HitTarget)
-{
-	FVector ToTargetNormalized = (HitTarget - TraceStart).GetSafeNormal();
-	FVector SphereCenter = TraceStart + ToTargetNormalized * DistanceToSphere;
-	FVector RandVec = UKismetMathLibrary::RandomUnitVector() * FMath::FRandRange(0.f, SphereRadius);
-	FVector EndLoc = SphereCenter + RandVec;
-	FVector ToEndLoc = EndLoc - TraceStart;
-
-	return FVector(TraceStart + ToEndLoc * TRACE_LEN / ToEndLoc.Size());
-}
-
 void AHItScanWeapon::WeaponTraceHit(const FVector& TraceStart, const FVector& HitTarget, FHitResult& OutHit)
 {
 	UWorld* World = GetWorld();
 	if (World)
 	{
-		FVector End = bUseScatter?TraceEndWithScatter(TraceStart, HitTarget):(HitTarget - TraceStart) * 1.25f + TraceStart;
+		FVector End = (HitTarget - TraceStart) * 1.25f + TraceStart;
 		World->LineTraceSingleByChannel(
 			OutHit,
 			TraceStart,
