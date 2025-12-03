@@ -39,6 +39,7 @@ public:
 	void StopHighPingWarning();
 	void CheckPing(float DeltaSeconds);
 
+	float SingleTripTime = 0;
 protected:
 	virtual void BeginPlay() override;
 	void SetHUDTime();
