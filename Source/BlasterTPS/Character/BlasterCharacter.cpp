@@ -152,9 +152,9 @@ ABlasterCharacter::ABlasterCharacter()
 	{
 		if (Box.Value)
 		{
-			//Box.Value->SetCollisionObjectType(ECC_HitBox);
-			//Box.Value->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
-			//Box.Value->SetCollisionResponseToChannel(ECC_HitBox, ECollisionResponse::ECR_Block);
+			Box.Value->SetCollisionObjectType(ECC_HITBOX);
+			Box.Value->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
+			Box.Value->SetCollisionResponseToChannel(ECC_HITBOX, ECollisionResponse::ECR_Block);
 			Box.Value->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		}
 	}
@@ -483,6 +483,15 @@ void ABlasterCharacter::PlayThrowGrenadeMontage()
 	}
 }
 
+void ABlasterCharacter::PlaySwapMontage()
+{
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if (AnimInstance && SwapMontage)
+	{
+		AnimInstance->Montage_Play(SwapMontage);
+	}
+}
+
 void ABlasterCharacter::OnRep_ReplicateMovement()
 {
 	Super::OnRep_ReplicateMovement();
@@ -626,7 +635,18 @@ void ABlasterCharacter::EquipButtonPressed(const FInputActionValue& Value)
 	if (bDisableGameplay) return;
 	if (Combat)
 	{
-		ServerEquipButtonPressed();
+		if(Combat->CombatState == ECombatState::ECS_Unoccupied) ServerEquipButtonPressed();
+		if (
+			Combat->ShouldSwapWeapons() && 
+			!HasAuthority() && 
+			Combat->CombatState == ECombatState::ECS_Unoccupied && 
+			OverlappingWeapon == nullptr
+			)
+		{
+			PlaySwapMontage();
+			Combat->CombatState = ECombatState::ECS_SwappingWeapon;
+			bFinishSwaping = false;
+		}
 	}
 }
 
@@ -884,9 +904,11 @@ void ABlasterCharacter::UpdateHUDShield()
 
 void ABlasterCharacter::UpdateHUDAmmo()
 {
+	UE_LOG(LogTemp, Warning, TEXT("start UpdateHUDAmmo"));
 	BlasterPlayerController = BlasterPlayerController == nullptr ? Cast<ABlasterPlayerController>(Controller) : BlasterPlayerController;
 	if (BlasterPlayerController && Combat && Combat->EquippedWeapon)
 	{
+		UE_LOG(LogTemp, Warning, TEXT("UpdateHUDAmmo:%d %d"), Combat->CarriedAmmo, Combat->EquippedWeapon->GetAmmo());
 		BlasterPlayerController->SetHUDCarriedAmmo(Combat->CarriedAmmo);
 		BlasterPlayerController->SetHUDWeaponAmmo(Combat->EquippedWeapon->GetAmmo());
 	}

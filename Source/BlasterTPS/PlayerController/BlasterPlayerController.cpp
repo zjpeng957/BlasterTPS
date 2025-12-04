@@ -100,6 +100,8 @@ void ABlasterPlayerController::SetHUDDefeats(int32 Defeats)
 
 void ABlasterPlayerController::SetHUDWeaponAmmo(int32 Ammo)
 {
+	FDebug::DumpStackTraceToLog(ELogVerbosity::Warning);
+	UE_LOG(LogTemp, Warning, TEXT("SetHUDWeaponAmmo"));
 	BlasterHUD = BlasterHUD == nullptr ? Cast<ABlasterHUD>(GetHUD()) : BlasterHUD;
 	bool bHUDValid = BlasterHUD &&
 		BlasterHUD->CharacterOverlay &&
@@ -118,6 +120,8 @@ void ABlasterPlayerController::SetHUDWeaponAmmo(int32 Ammo)
 
 void ABlasterPlayerController::SetHUDCarriedAmmo(int32 Ammo)
 {
+	FDebug::DumpStackTraceToLog(ELogVerbosity::Warning);
+	UE_LOG(LogTemp, Warning, TEXT("SetHUDCarriedAmmo"));
 	BlasterHUD = BlasterHUD == nullptr ? Cast<ABlasterHUD>(GetHUD()) : BlasterHUD;
 	bool bHUDValid = BlasterHUD &&
 		BlasterHUD->CharacterOverlay &&
@@ -355,6 +359,11 @@ void ABlasterPlayerController::CheckPing(float DeltaSeconds)
 			{
 				HighPingWarning();
 				PingAnimationRunningTime = 0.f;
+				ServerReportPingStatus(true);
+			}
+			else
+			{
+				ServerReportPingStatus(false);
 			}
 		}
 		HighPingRunningTime = 0.f;
@@ -384,6 +393,11 @@ void ABlasterPlayerController::OnRep_MatchState()
 	{
 		HandleCooldown();
 	}
+}
+
+void ABlasterPlayerController::ServerReportPingStatus_Implementation(bool bHighPing)
+{
+	HighPingDelegate.Broadcast(bHighPing);
 }
 
 void ABlasterPlayerController::BeginPlay()
@@ -454,8 +468,8 @@ void ABlasterPlayerController::PollInit()
 				if (bInitializedScore) SetHUDScore(HUDScore);
 				if (bInitializedDefeats) SetHUDDefeats(HUDDefeats);
 				if (bInitializedGrenades) SetHUDGrenades(HUDGrenades);
-				if (bInitializedCarriedAmmo) SetHUDGrenades(HUDCarriedAmmo);
-				if (bInitializedWeaponAmmo) SetHUDGrenades(HUDWeaponAmmo);
+				if (bInitializedCarriedAmmo) SetHUDCarriedAmmo(HUDCarriedAmmo);
+				if (bInitializedWeaponAmmo) SetHUDWeaponAmmo(HUDWeaponAmmo);
 
 				ABlasterCharacter* BlasterCharacter = Cast< ABlasterCharacter>(GetPawn());
 				if (BlasterCharacter && BlasterCharacter->GetCombat())

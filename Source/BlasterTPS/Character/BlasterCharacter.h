@@ -186,6 +186,8 @@ public:
 
 	UPROPERTY()
 	TMap<FName, UBoxComponent*> HitCollisionBoxes;
+
+	bool bFinishSwaping = false;
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
@@ -218,6 +220,8 @@ public:
 	void PlayReloadMontage();
 	
 	void PlayThrowGrenadeMontage();
+
+	void PlaySwapMontage();
 
 	virtual void OnRep_ReplicateMovement() override;
 
@@ -284,6 +288,9 @@ private:
 
 	UPROPERTY(EditAnywhere, Category = Combat)
 	UAnimMontage* ThrowGrenadeMontage;
+
+	UPROPERTY(EditAnywhere, Category = Combat)
+	UAnimMontage* SwapMontage;
 
 	void HideCameraIfCharacterClose();
 

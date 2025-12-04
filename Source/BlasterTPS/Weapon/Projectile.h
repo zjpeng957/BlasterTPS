@@ -17,6 +17,14 @@ public:
 	virtual void Tick(float DeltaTime) override;
 	virtual void Destroyed() override;
 
+	bool bUseServerSideRewind = false;
+	FVector_NetQuantize TraceStart;
+	FVector_NetQuantize100 InitialVelocity;
+	UPROPERTY(EditAnywhere)
+	float InitialSpeed = 15000.f;
+
+	float Damage = 20.f;
+
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
@@ -24,9 +32,6 @@ protected:
 	void DestroyTimerFinished();
 	void StartDestroyTimer();
 	void ExplodeDamage();
-
-	UPROPERTY(EditAnywhere)
-	float Damage = 20.f;
 
 	UFUNCTION()
 	virtual void OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit);

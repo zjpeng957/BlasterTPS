@@ -83,6 +83,10 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Weapon Scatter")
 	bool bUseScatter = false;
 
+
+	UPROPERTY(EditAnywhere)
+	float Damage = 20.f;
+
 	UFUNCTION()
 	void OnRep_WeaponState();
 	void ShowPickupWidget(bool bShowWidget);
@@ -141,16 +145,16 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Weapon Scatter")
 	float SphereRadius = 75.f;
 
-	UPROPERTY(EditAnywhere)
-	float Damage = 20.f;
-
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, Replicated)
 	bool bUseServerSideRewind = false;
 
 	UPROPERTY()
 	class ABlasterCharacter* BlasterOwnerCharacter;
 	UPROPERTY()
 	class ABlasterPlayerController* BlasterOwnerController;
+
+	UFUNCTION()
+	void OnPingTooHigh(bool bPingTooHigh);
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
