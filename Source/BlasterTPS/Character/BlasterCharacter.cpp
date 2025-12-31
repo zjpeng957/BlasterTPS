@@ -23,6 +23,10 @@
 #include "Kismet/GameplayStatics.h"
 #include "Particles/ParticleSystemComponent.h"
 #include "Sound/SoundCue.h"
+#include "AbilitySystemComponent.h"
+#include "GameplayEffect.h"
+#include "GameplayTagContainer.h"
+#include "BlasterTPS/Character/BlasterAttributeSet.h"
 
 // Sets default values
 ABlasterCharacter::ABlasterCharacter()
@@ -62,8 +66,8 @@ ABlasterCharacter::ABlasterCharacter()
 
 	TurningInPlace = ETurningInPlace::ETIP_NotTurning;
 
-	NetUpdateFrequency = 66.f;
-	MinNetUpdateFrequency = 33.f;
+	SetNetUpdateFrequency(66.f);
+	SetMinNetUpdateFrequency(33.f);
 
 	DissolveTimeline = CreateDefaultSubobject<UTimelineComponent>(TEXT("DissolveTimeline"));
 
@@ -374,8 +378,6 @@ void ABlasterCharacter::GetLifetimeReplicatedProps(TArray<class FLifetimePropert
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME_CONDITION(ABlasterCharacter, OverlappingWeapon, COND_OwnerOnly);
-	DOREPLIFETIME(ABlasterCharacter, Health);
-	DOREPLIFETIME(ABlasterCharacter, Shield);
 	DOREPLIFETIME(ABlasterCharacter, bDisableGameplay);
 }
 
@@ -537,7 +539,28 @@ void ABlasterCharacter::DropOrDestroyWeapons()
 
 void ABlasterCharacter::Destroyed()
 {
-	Super::Destroyed();	
+	// Remove attribute delegates to avoid dangling references
+	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponent())
+	{
+		if (HealthChangedDelegateHandle.IsValid())
+		{
+			ASC->GetGameplayAttributeValueChangeDelegate(UBlasterAttributeSet::GetHealthAttribute()).Remove(HealthChangedDelegateHandle);
+		}
+		if (MaxHealthChangedDelegateHandle.IsValid())
+		{
+			ASC->GetGameplayAttributeValueChangeDelegate(UBlasterAttributeSet::GetMaxHealthAttribute()).Remove(MaxHealthChangedDelegateHandle);
+		}
+		if (ShieldChangedDelegateHandle.IsValid())
+		{
+			ASC->GetGameplayAttributeValueChangeDelegate(UBlasterAttributeSet::GetShieldAttribute()).Remove(ShieldChangedDelegateHandle);
+		}
+		if (MaxShieldChangedDelegateHandle.IsValid())
+		{
+			ASC->GetGameplayAttributeValueChangeDelegate(UBlasterAttributeSet::GetMaxShieldAttribute()).Remove(MaxShieldChangedDelegateHandle);
+		}
+	}
+
+	Super::Destroyed();
 
 	if (ElimBotComponent)
 	{
@@ -749,26 +772,28 @@ void ABlasterCharacter::ReceiveDamage(AActor* DamagedActor, float Damage, const 
 {
 	if (bElimmed) return;
 	float DamageToHealth = Damage;
-	if (Shield > 0.f)
+	if (GetShield() > 0.f)
 	{
-		if (Shield >= Damage)
+		if (GetShield() >= Damage)
 		{
-			Shield = FMath::Clamp(Shield - Damage, 0.f, MaxShield);
+			SetShield(FMath::Clamp(GetShield() - Damage, 0.f, GetMaxShield()));
 			DamageToHealth = 0.f;
 		}
 		else
 		{
-			DamageToHealth = FMath::Clamp(Damage - Shield, 0.f, Damage);
-			Shield = 0.f;
+			DamageToHealth = FMath::Clamp(Damage - GetShield(), 0.f, Damage);
+			SetShield(0.f);
 		}
 	}
-	Health = FMath::Clamp(Health - DamageToHealth, 0, MaxHealth);
+
+	float NewHealth = FMath::Clamp(GetHealth() - DamageToHealth, 0.f, GetMaxHealth());
+	SetHealth(NewHealth);
 
 	UpdateHUDShield();
 	UpdateHUDHealth();
 	PlayHitReactMontage();
 
-	if (Health == 0.f)
+	if (FMath::IsNearlyZero(GetHealth()))
 	{
 		if (ABlasterGameMode* BlasterGameMode = GetWorld()->GetAuthGameMode<ABlasterGameMode>())
 		{
@@ -866,30 +891,12 @@ float ABlasterCharacter::CalculateSpeed()
 	return Velocity.Size();
 }
 
-void ABlasterCharacter::OnRep_Health(float LastHealth)
-{
-	UpdateHUDHealth();
-	if (Health < LastHealth)
-	{
-		PlayHitReactMontage();
-	}
-}
-
-void ABlasterCharacter::OnRep_Shield(float LastShield)
-{
-	UpdateHUDShield();
-	if (Shield < LastShield)
-	{
-		PlayHitReactMontage();
-	}
-}
-
 void ABlasterCharacter::UpdateHUDHealth()
 {
 	BlasterPlayerController = BlasterPlayerController == nullptr ? Cast<ABlasterPlayerController>(Controller) : BlasterPlayerController;
 	if (BlasterPlayerController)
 	{
-		BlasterPlayerController->SetHUDHealth(Health, MaxHealth);
+		BlasterPlayerController->SetHUDHealth(GetHealth(), GetMaxHealth());
 	}
 }
 
@@ -898,7 +905,7 @@ void ABlasterCharacter::UpdateHUDShield()
 	BlasterPlayerController = BlasterPlayerController == nullptr ? Cast<ABlasterPlayerController>(Controller) : BlasterPlayerController;
 	if (BlasterPlayerController)
 	{
-		BlasterPlayerController->SetHUDShield(Shield, MaxShield);
+		BlasterPlayerController->SetHUDShield(GetShield(), GetMaxShield());
 	}
 }
 
@@ -976,5 +983,110 @@ AWeapon* ABlasterCharacter::GetEquippedWeapon() const
 {
 	if (Combat == nullptr) return nullptr;
 	return Combat->EquippedWeapon;
+}
+
+void ABlasterCharacter::PossessedBy(AController* NewController)
+{
+	Super::PossessedBy(NewController);
+
+	// Initialize ability system on server when pawn is possessed
+	InitializeAbilitySystem();
+
+	// Ensure attributes are initialized now that ASC and PlayerState are available
+	if (HasAuthority())
+	{
+		if (ABlasterPlayerState* BPS = GetPlayerState<ABlasterPlayerState>())
+		{
+			if (DefaultAttributeEffect)
+			{
+				InitializeAttributes(DefaultAttributeEffect);
+			}
+		}
+	}
+}
+
+// Add client-side PlayerState replication handler so clients can initialize their ASC
+void ABlasterCharacter::OnRep_PlayerState()
+{
+	Super::OnRep_PlayerState();
+
+	// Initialize Ability System Component on clients when PlayerState is replicatedOnRep_PlayerState
+	InitializeAbilitySystem();
+
+	// Cache the player state pointer for convenience
+	BlasterPlayerState = BlasterPlayerState == nullptr ? GetPlayerState<ABlasterPlayerState>() : BlasterPlayerState;
+
+	// Update cached attribute snapshots and HUD so client shows correct values immediately
+	if (BlasterPlayerState)
+	{
+		// Ensure LastHealth/LastShield are in sync
+		LastHealth = BlasterPlayerState->GetHealth();
+		LastShield = BlasterPlayerState->GetShield();
+
+		// Update HUD elements
+		UpdateHUDHealth();
+		UpdateHUDShield();
+		UpdateHUDAmmo();
+	}
+}
+
+void ABlasterCharacter::InitializeAbilitySystem()
+{
+	if (AbilitySystemComponent) return; // ensure not re-init
+
+	if (ABlasterPlayerState* BPS = GetPlayerState<ABlasterPlayerState>())
+	{
+		if (UAbilitySystemComponent*  ASC = BPS->GetAbilitySystemComponent())
+		{
+			// Initialize actor info linking ASC to avatar/owner
+			ASC->InitAbilityActorInfo(BPS, this);
+			// Cache pointer locally
+			AbilitySystemComponent = ASC;
+
+			// Subscribe to attribute change delegates on ASC
+			HealthChangedDelegateHandle = ASC->GetGameplayAttributeValueChangeDelegate(UBlasterAttributeSet::GetHealthAttribute()).AddUObject(this, &ABlasterCharacter::OnHealthChanged);
+			MaxHealthChangedDelegateHandle = ASC->GetGameplayAttributeValueChangeDelegate(UBlasterAttributeSet::GetMaxHealthAttribute()).AddUObject(this, &ABlasterCharacter::OnMaxHealthChanged);
+			ShieldChangedDelegateHandle = ASC->GetGameplayAttributeValueChangeDelegate(UBlasterAttributeSet::GetShieldAttribute()).AddUObject(this, &ABlasterCharacter::OnShieldChanged);
+			MaxShieldChangedDelegateHandle = ASC->GetGameplayAttributeValueChangeDelegate(UBlasterAttributeSet::GetMaxShieldAttribute()).AddUObject(this, &ABlasterCharacter::OnMaxShieldChanged);
+
+			// Initialize cached values
+			LastHealth = GetHealth();
+			LastShield = GetShield();
+		}
+	}
+}
+
+void ABlasterCharacter::OnHealthChanged(const FOnAttributeChangeData& Data)
+{
+	float NewHealth = Data.NewValue;
+	// Update HUD
+	UpdateHUDHealth();
+	// Play hit react if decreased
+	if (NewHealth < LastHealth)
+	{
+		PlayHitReactMontage();
+	}
+	LastHealth = NewHealth;
+}
+
+void ABlasterCharacter::OnMaxHealthChanged(const FOnAttributeChangeData& Data)
+{
+	UpdateHUDHealth();
+}
+
+void ABlasterCharacter::OnShieldChanged(const FOnAttributeChangeData& Data)
+{
+	float NewShield = Data.NewValue;
+	UpdateHUDShield();
+	if (NewShield < LastShield)
+	{
+		PlayHitReactMontage();
+	}
+	LastShield = NewShield;
+}
+
+void ABlasterCharacter::OnMaxShieldChanged(const FOnAttributeChangeData& Data)
+{
+	UpdateHUDShield();
 }
 

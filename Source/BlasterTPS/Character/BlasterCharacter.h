@@ -3,23 +3,27 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GameFramework/Character.h"
+#include "BlasterCharacterBase.h"
 #include "EnhancedInputComponent.h"
 #include "InputMappingContext.h"
 #include "BlasterTPS/BlasterComponents/BuffComponent.h"
 #include "BlasterTPS/BlasterComponents/CombatComponent.h"
 #include "BlasterTPS/BlasterTypes/CombatState.h"
 #include "BlasterTPS/BlasterTypes/TurningInPlace.h"
-#include "BlasterTPS/Interface/InteractWithCrosshairsInterface.h"
+#include "BlasterTPS/PlayerState/BlasterPlayerState.h"
 #include "Camera/CameraComponent.h"
 #include "Components/TimelineComponent.h"
+#include "AbilitySystemInterface.h"
+#include "AbilitySystemComponent.h"
+#include "GameplayEffectTypes.h"
 #include "BlasterCharacter.generated.h"
 
 class ULagCompensationComponent;
 class UBoxComponent;
+class ABlasterPlayerState;
 
 UCLASS()
-class BLASTERTPS_API ABlasterCharacter : public ACharacter, public IInteractWithCrosshairsInterface
+class BLASTERTPS_API ABlasterCharacter : public ABlasterCharacterBase
 {
 	GENERATED_BODY()
 
@@ -27,6 +31,17 @@ public:
 	// Sets default values for this character's properties
 	ABlasterCharacter();
 
+	// Ability System initialization
+	virtual void PossessedBy(AController* NewController) override;
+	virtual void OnRep_PlayerState() override;
+	void InitializeAbilitySystem();
+
+	// Attribute change handlers
+	void OnHealthChanged(const FOnAttributeChangeData& Data);
+	void OnMaxHealthChanged(const FOnAttributeChangeData& Data);
+	void OnShieldChanged(const FOnAttributeChangeData& Data);
+	void OnMaxShieldChanged(const FOnAttributeChangeData& Data);
+	
 	UPROPERTY(Replicated)
 	bool bDisableGameplay = false;
 
@@ -112,12 +127,12 @@ public:
 	FORCEINLINE UCameraComponent* GetFollowCamera() const { return FollowCamera; }
 	FORCEINLINE bool ShouldRotateRootBone() const { return bRotateRootBone; }
 	FORCEINLINE bool IsElimmed() const { return bElimmed; }
-	FORCEINLINE float GetHealth() const { return Health; }
-	FORCEINLINE void SetHealth(float Amount) { Health = Amount; }
-	FORCEINLINE float GetMaxHealth() const { return MaxHealth; }
-	FORCEINLINE float GetShield() const { return Shield; }
-	FORCEINLINE void SetShield(float Amount) { Shield = Amount; }
-	FORCEINLINE float GetMaxShield() const { return MaxShield; }
+	FORCEINLINE float GetHealth() const { if (const ABlasterPlayerState* PS = GetPlayerState<ABlasterPlayerState>()) return PS->GetHealth(); return 0.f; }
+	FORCEINLINE void SetHealth(float Amount) { if (ABlasterPlayerState* PS = GetPlayerState<ABlasterPlayerState>()) PS->SetHealth(Amount); }
+	FORCEINLINE float GetMaxHealth() const { if (const ABlasterPlayerState* PS = GetPlayerState<ABlasterPlayerState>()) return PS->GetMaxHealth(); return 0.f; }
+	FORCEINLINE float GetShield() const { if (const ABlasterPlayerState* PS = GetPlayerState<ABlasterPlayerState>()) return PS->GetShield(); return 0.f; }
+	FORCEINLINE void SetShield(float Amount) { if (ABlasterPlayerState* PS = GetPlayerState<ABlasterPlayerState>()) PS->SetShield(Amount); }
+	FORCEINLINE float GetMaxShield() const { if (const ABlasterPlayerState* PS = GetPlayerState<ABlasterPlayerState>()) return PS->GetMaxShield(); return 0.f; }
 	FORCEINLINE UCombatComponent* GetCombat() const { return Combat; }
 	FORCEINLINE UBuffComponent* GetBuff() const { return Buff; }
 	FORCEINLINE ULagCompensationComponent* GetLagCompensation() const { return LagCompensation; }
@@ -200,7 +215,18 @@ protected:
 
 	void DropOrDestroyWeapon(AWeapon* Weapon);
 	void DropOrDestroyWeapons();
-public:	
+	
+	// Cached last values for reacting to changes
+	float LastHealth = 0.f;
+	float LastShield = 0.f;
+
+	// Delegate handles so we can remove bindings on destroy
+	FDelegateHandle HealthChangedDelegateHandle;
+	FDelegateHandle MaxHealthChangedDelegateHandle;
+	FDelegateHandle ShieldChangedDelegateHandle;
+	FDelegateHandle MaxShieldChangedDelegateHandle;
+	
+public: 	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
@@ -307,28 +333,10 @@ private:
 	float CalculateSpeed();
 
 	/*
-	 * Player Health
-	 */
-	UPROPERTY(EditAnywhere, Category="Player stats")
-	float MaxHealth = 100.f;
-
-	UPROPERTY(ReplicatedUsing = OnRep_Health, VisibleAnywhere, Category = "Player stats")
-	float Health = 100.f;
-
-	UFUNCTION()
-	void OnRep_Health(float LastHealth);
-
-	/*
 	 * Player Shield
+	 * (Moved to AttributeSet in BlasterCharacterBase)
 	 */
-	UPROPERTY(EditAnywhere, Category = "Player stats")
-	float MaxShield = 100.f;
-
-	UPROPERTY(ReplicatedUsing = OnRep_Shield, EditAnywhere, Category = "Player stats")
-	float Shield = 100.f;
-
-	UFUNCTION()
-	void OnRep_Shield(float LastShield);
+	// Shield is now part of AttributeSet; remove local replicated fields and OnRep.
 
 	UPROPERTY()
 	class ABlasterPlayerController* BlasterPlayerController;
