@@ -8,7 +8,7 @@
 ABlasterCharacterBase::ABlasterCharacterBase()
 {
 	AbilitySystemComponent = nullptr;
-	AttributeSet = CreateDefaultSubobject<UBlasterAttributeSet>(TEXT("AttributeSet"));
+	// AttributeSet moved to PlayerState; do not create it here
 	bAttributesInitialized = false;
 }
 
@@ -20,6 +20,18 @@ UAbilitySystemComponent* ABlasterCharacterBase::GetAbilitySystemComponent() cons
 		if (const ABlasterPlayerState* BPS = Cast<ABlasterPlayerState>(PS))
 		{
 			return BPS->GetAbilitySystemComponent();
+		}
+	}
+	return nullptr;
+}
+
+UBlasterAttributeSet* ABlasterCharacterBase::GetAttributeSet() const
+{
+	if (const APlayerState* PS = GetPlayerState())
+	{
+		if (const ABlasterPlayerState* BPS = Cast<ABlasterPlayerState>(PS))
+		{
+			return BPS->GetAttributeSet();
 		}
 	}
 	return nullptr;

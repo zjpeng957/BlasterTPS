@@ -27,6 +27,7 @@
 #include "GameplayEffect.h"
 #include "GameplayTagContainer.h"
 #include "BlasterTPS/Character/BlasterAttributeSet.h"
+#include "BlasterGameplayTags.h"
 
 // Sets default values
 ABlasterCharacter::ABlasterCharacter()
@@ -471,6 +472,9 @@ void ABlasterCharacter::PlayReloadMontage()
 		case EWeaponType::EWT_GrenadeLauncher:
 			SectionName = FName("GrenadeLauncher");
 			break;
+		default:
+			SectionName = FName("Rifle");
+			break;
 		}
 		AnimInstance->Montage_JumpToSection(SectionName);
 	}
@@ -771,6 +775,102 @@ void ABlasterCharacter::ReceiveDamage(AActor* DamagedActor, float Damage, const 
 	AController* InstigatedBy, AActor* DamageCauser)
 {
 	if (bElimmed) return;
+
+	UE_LOG(LogTemp, Warning, TEXT("ReceiveDamage_%s: Role=%d RemoteRole=%d HasAuthority=%d Damage=%.1f"),
+		*GetName(), (int32)GetLocalRole(), (int32)GetRemoteRole(), HasAuthority(), Damage);
+	// If we have an AbilitySystemComponent and GameplayEffects configured, prefer applying damage via ASC
+	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponent())
+	{
+		// Apply to shield first if shield exists
+		float CurrentShield = GetShield();
+		float DamageToHealth = Damage;
+
+		if (CurrentShield > 0.f)
+		{
+			float ShieldDamage = FMath::Min(CurrentShield, Damage);
+			DamageToHealth = Damage - ShieldDamage;
+
+			// Apply shield damage via GameplayEffect if configured
+			if (ShieldGameplayEffect)
+			{
+				FGameplayEffectContextHandle EffectContext = ASC->MakeEffectContext();
+				EffectContext.AddSourceObject(DamageCauser ? DamageCauser : this);
+				FGameplayEffectSpecHandle SpecHandle = ASC->MakeOutgoingSpec(ShieldGameplayEffect, 1.f, EffectContext);
+				if (SpecHandle.IsValid())
+				{
+					// Expect GE to have a negative modifier to Shield or otherwise use SetByCaller value
+					SpecHandle.Data->SetSetByCallerMagnitude(BlasterGameplayTags::SetByCaller::Damage, -ShieldDamage);
+					ASC->ApplyGameplayEffectSpecToTarget(*SpecHandle.Data.Get(), ASC);
+					UE_LOG(LogTemp, Warning, TEXT("Apply shield damage via GE: %.1f"), ShieldDamage);
+				}
+			}
+			else
+			{
+				// Fallback: directly modify attribute on server
+				if (HasAuthority())
+				{
+					SetShield(FMath::Clamp(CurrentShield - ShieldDamage, 0.f, GetMaxShield()));
+				}
+			}
+		}
+
+		// Apply health damage via GameplayEffect if configured
+		if (DamageToHealth > 0.f)
+		{
+			if (DamageGameplayEffect)
+			{
+				FGameplayEffectContextHandle EffectContext = ASC->MakeEffectContext();
+				EffectContext.AddSourceObject(DamageCauser ? DamageCauser : this);
+				FGameplayEffectSpecHandle SpecHandle = ASC->MakeOutgoingSpec(DamageGameplayEffect, 1.f, EffectContext);
+				if (SpecHandle.IsValid())
+				{
+					SpecHandle.Data->SetSetByCallerMagnitude(BlasterGameplayTags::SetByCaller::Damage, -DamageToHealth);
+					ASC->ApplyGameplayEffectSpecToTarget(*SpecHandle.Data.Get(), ASC);
+				}
+			}
+			else
+			{
+				// Fallback: directly modify attribute on server
+				if (HasAuthority())
+				{
+					float NewHealth = FMath::Clamp(GetHealth() - DamageToHealth, 0.f, GetMaxHealth());
+					SetHealth(NewHealth);
+				}
+			}
+		}
+
+		// Update HUD after attribute changes
+		UpdateHUDShield();
+		UpdateHUDHealth();
+
+		// Play hit react if necessary: check last cached values
+		if (GetHealth() < LastHealth)
+		{
+			PlayHitReactMontage();
+		}
+		if (GetShield() < LastShield)
+		{
+			PlayHitReactMontage();
+		}
+
+		LastHealth = GetHealth();
+		LastShield = GetShield();
+
+		// Check elimination
+		if (FMath::IsNearlyZero(GetHealth()))
+		{
+			if (ABlasterGameMode* BlasterGameMode = GetWorld()->GetAuthGameMode<ABlasterGameMode>())
+			{
+				BlasterPlayerController = BlasterPlayerController == nullptr ? Cast<ABlasterPlayerController>(Controller) : BlasterPlayerController;
+				ABlasterPlayerController* AttackerController = Cast<ABlasterPlayerController>(InstigatedBy);
+				BlasterGameMode->PlayerEliminated(this, BlasterPlayerController, AttackerController);
+			}
+		}
+
+		return;
+	}
+
+	// Fallback path: no ASC available - keep existing logic
 	float DamageToHealth = Damage;
 	if (GetShield() > 0.f)
 	{
@@ -995,7 +1095,7 @@ void ABlasterCharacter::PossessedBy(AController* NewController)
 	// Ensure attributes are initialized now that ASC and PlayerState are available
 	if (HasAuthority())
 	{
-		if (ABlasterPlayerState* BPS = GetPlayerState<ABlasterPlayerState>())
+		if (GetPlayerState<ABlasterPlayerState>())
 		{
 			if (DefaultAttributeEffect)
 			{

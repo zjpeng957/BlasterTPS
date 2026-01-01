@@ -59,6 +59,10 @@ public:
 	// Initialize attributes via a GameplayEffect (call once on server when ASC initialized)
 	void InitializeAttributes(TSubclassOf<UGameplayEffect> DefaultAttributeEffect);
 
+	// Provide access to the AttributeSet owned by PlayerState
+	UFUNCTION()
+	UBlasterAttributeSet* GetAttributeSet() const { return AttributeSet; }
+
 private:
 	UPROPERTY()
 	class ABlasterCharacter* Character;
@@ -72,8 +76,8 @@ private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Abilities", meta = (AllowPrivateAccess = "true"))
 	UAbilitySystemComponent* AbilitySystemComponent;
 
-	// Attribute set
-	UPROPERTY()
+	// Attribute set (migrated from Character)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Abilities", meta = (AllowPrivateAccess = "true"))
 	UBlasterAttributeSet* AttributeSet;
 
 	bool bAttributesInitialized = false;

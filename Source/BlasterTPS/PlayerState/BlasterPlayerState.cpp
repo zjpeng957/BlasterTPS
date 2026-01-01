@@ -15,8 +15,8 @@ ABlasterPlayerState::ABlasterPlayerState()
 	AbilitySystemComponent = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
 	AbilitySystemComponent->SetIsReplicated(true);
 
-	// AttributeSet moved to CharacterBase; no longer create here
-	// AttributeSet = CreateDefaultSubobject<UBlasterAttributeSet>(TEXT("AttributeSet"));
+	// Create AttributeSet here so PlayerState owns it
+	AttributeSet = CreateDefaultSubobject<UBlasterAttributeSet>(TEXT("AttributeSet"));
 }
 
 void ABlasterPlayerState::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const
@@ -207,20 +207,22 @@ void ABlasterPlayerState::SetMaxShield(float NewMaxShield)
 	}
 }
 
-// void ABlasterPlayerState::InitializeAttributes(TSubclassOf<UGameplayEffect> DefaultAttributeEffect)
-// {
-// 	if (bAttributesInitialized) return;
-// 	if (!HasAuthority()) return;
-// 	if (!AbilitySystemComponent) return;
-// 	if (!DefaultAttributeEffect) return;
-//
-// 	// Use the GameplayEffect class to create a spec
-// 	FGameplayEffectContextHandle EffectContext = AbilitySystemComponent->MakeEffectContext();
-// 	EffectContext.AddSourceObject(this);
-// 	FGameplayEffectSpecHandle SpecHandle = AbilitySystemComponent->MakeOutgoingSpec(DefaultAttributeEffect, 1.f, EffectContext);
-// 	if (SpecHandle.IsValid())
-// 	{
-// 		AbilitySystemComponent->ApplyGameplayEffectSpecToTarget(*SpecHandle.Data.Get(), AbilitySystemComponent);
-// 		bAttributesInitialized = true;
-// 	}
-// }
+void ABlasterPlayerState::InitializeAttributes(TSubclassOf<UGameplayEffect> DefaultAttributeEffect)
+{
+	if (bAttributesInitialized) return;
+	if (!HasAuthority()) return;
+	if (!AbilitySystemComponent) return;
+	if (!DefaultAttributeEffect) return;
+
+	// Use the GameplayEffect class to create a spec
+	FGameplayEffectContextHandle EffectContext = AbilitySystemComponent->MakeEffectContext();
+	EffectContext.AddSourceObject(this);
+	FGameplayEffectSpecHandle SpecHandle = AbilitySystemComponent->MakeOutgoingSpec(DefaultAttributeEffect, 1.f, EffectContext);
+	if (SpecHandle.IsValid())
+	{
+		// Apply to AbilitySystemComponent; since the AttributeSet is owned by this PlayerState and registered with the ASC,
+		// the values in AttributeSet will be modified and replicated to clients.
+		AbilitySystemComponent->ApplyGameplayEffectSpecToTarget(*SpecHandle.Data.Get(), AbilitySystemComponent);
+		bAttributesInitialized = true;
+	}
+}

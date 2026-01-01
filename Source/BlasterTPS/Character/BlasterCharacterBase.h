@@ -12,7 +12,7 @@ class UAbilitySystemComponent;
 class UGameplayEffect;
 class UBlasterAttributeSet;
 
-UCLASS()
+UCLASS(Abstract)
 class BLASTERTPS_API ABlasterCharacterBase : public ACharacter, public IInteractWithCrosshairsInterface, public IAbilitySystemInterface
 {
 	GENERATED_BODY()
@@ -31,7 +31,7 @@ public:
 	void InitializeAttributes(TSubclassOf<UGameplayEffect> DefaultAttributeEffect);
 
 	UFUNCTION()
-	UBlasterAttributeSet* GetAttributeSet() const { return AttributeSet; }
+	UBlasterAttributeSet* GetAttributeSet() const;
 
 protected:
 	// AbilitySystemComponent is now owned by PlayerState; Character will retrieve it from PlayerState at runtime.
@@ -39,9 +39,7 @@ protected:
 	UPROPERTY()
 	UAbilitySystemComponent* AbilitySystemComponent;
 
-	// Attribute set owned by character for convenience across character subclasses
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Abilities", meta = (AllowPrivateAccess = "true"))
-	UBlasterAttributeSet* AttributeSet;
+	// Attribute set moved to PlayerState; Character will access it via PlayerState
 
 	bool bAttributesInitialized = false;
 };

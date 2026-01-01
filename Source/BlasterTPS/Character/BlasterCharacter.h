@@ -394,4 +394,12 @@ private:
 
 	UPROPERTY(EditAnywhere)
 	TSubclassOf<AWeapon> DefaultWeaponClass;
+
+	// GameplayEffect to apply when dealing health damage (optional, set in editor)
+	UPROPERTY(EditDefaultsOnly, Category = "Abilities")
+	TSubclassOf<UGameplayEffect> DamageGameplayEffect;
+
+	// GameplayEffect to apply when dealing shield damage (optional, set in editor)
+	UPROPERTY(EditDefaultsOnly, Category = "Abilities")
+	TSubclassOf<UGameplayEffect> ShieldGameplayEffect;
 };
