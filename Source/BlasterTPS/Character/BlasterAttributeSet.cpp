@@ -2,6 +2,9 @@
 
 #include "BlasterAttributeSet.h"
 #include "Net/UnrealNetwork.h"
+#include "GameFramework/Character.h"
+#include "GameFramework/CharacterMovementComponent.h"
+#include "AbilitySystemComponent.h"
 
 UBlasterAttributeSet::UBlasterAttributeSet()
 {
@@ -10,6 +13,8 @@ UBlasterAttributeSet::UBlasterAttributeSet()
 	MaxHealth = 100.f;
 	Shield = 100.f;
 	MaxShield = 100.f;
+	MoveSpeed = 600.f; // default Unreal walk speed
+	JumpVelocity = 600.f; // default Unreal jump velocity
 }
 
 void UBlasterAttributeSet::PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue)
@@ -32,6 +37,8 @@ void UBlasterAttributeSet::PreAttributeChange(const FGameplayAttribute& Attribut
 			Shield.SetCurrentValue(FMath::Clamp(Shield.GetCurrentValue(), 0.f, NewValue));
 		}
 	}
+	
+	// If MoveSpeed or JumpVelocity changes, we might want to apply to CharacterMovement. This cannot be done here because we need an Actor context in OnRep or via listeners.
 }
 
 void UBlasterAttributeSet::OnRep_Health(const FGameplayAttributeData& OldHealth)
@@ -54,6 +61,38 @@ void UBlasterAttributeSet::OnRep_MaxShield(const FGameplayAttributeData& OldMaxS
 	GAMEPLAYATTRIBUTE_REPNOTIFY(UBlasterAttributeSet, MaxShield, OldMaxShield);
 }
 
+void UBlasterAttributeSet::OnRep_MoveSpeed(const FGameplayAttributeData& OldMoveSpeed)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UBlasterAttributeSet, MoveSpeed, OldMoveSpeed);
+	// Sync to character movement component if possible
+	if (AActor* OwningActor = Cast<AActor>(GetOwningActor()))
+	{
+		if (ACharacter* Char = Cast<ACharacter>(OwningActor))
+		{
+			if (UCharacterMovementComponent* MoveComp = Char->GetCharacterMovement())
+			{
+				MoveComp->MaxWalkSpeed = MoveSpeed.GetCurrentValue();
+			}
+		}
+	}
+}
+
+void UBlasterAttributeSet::OnRep_JumpVelocity(const FGameplayAttributeData& OldJumpVelocity)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UBlasterAttributeSet, JumpVelocity, OldJumpVelocity);
+	// Sync to character movement component if possible
+	if (AActor* OwningActor = Cast<AActor>(GetOwningActor()))
+	{
+		if (ACharacter* Char = Cast<ACharacter>(OwningActor))
+		{
+			if (UCharacterMovementComponent* MoveComp = Char->GetCharacterMovement())
+			{
+				MoveComp->JumpZVelocity = JumpVelocity.GetCurrentValue();
+			}
+		}
+	}
+}
+
 void UBlasterAttributeSet::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
@@ -62,4 +101,6 @@ void UBlasterAttributeSet::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>&
 	DOREPLIFETIME_CONDITION_NOTIFY(UBlasterAttributeSet, MaxHealth, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UBlasterAttributeSet, Shield, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UBlasterAttributeSet, MaxShield, COND_None, REPNOTIFY_Always);
+	DOREPLIFETIME_CONDITION_NOTIFY(UBlasterAttributeSet, MoveSpeed, COND_None, REPNOTIFY_Always);
+	DOREPLIFETIME_CONDITION_NOTIFY(UBlasterAttributeSet, JumpVelocity, COND_None, REPNOTIFY_Always);
 }

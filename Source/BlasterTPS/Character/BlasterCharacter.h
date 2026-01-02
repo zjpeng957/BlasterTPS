@@ -13,7 +13,6 @@
 #include "BlasterTPS/PlayerState/BlasterPlayerState.h"
 #include "Camera/CameraComponent.h"
 #include "Components/TimelineComponent.h"
-#include "AbilitySystemInterface.h"
 #include "AbilitySystemComponent.h"
 #include "GameplayEffectTypes.h"
 #include "BlasterCharacter.generated.h"
@@ -41,7 +40,9 @@ public:
 	void OnMaxHealthChanged(const FOnAttributeChangeData& Data);
 	void OnShieldChanged(const FOnAttributeChangeData& Data);
 	void OnMaxShieldChanged(const FOnAttributeChangeData& Data);
-	
+	void OnMoveSpeedChanged(const FOnAttributeChangeData& Data);
+	void OnJumpVelocityChanged(const FOnAttributeChangeData& Data);
+
 	UPROPERTY(Replicated)
 	bool bDisableGameplay = false;
 
@@ -75,6 +76,9 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "Input")
 	UInputAction* ThrowGrenadeAction;
 
+	UPROPERTY(EditDefaultsOnly, Category = "Input")
+	UInputAction* DashAction;
+
 	void Move(const FInputActionValue& Value);
 
 	void Look(const FInputActionValue& Value);
@@ -99,6 +103,9 @@ public:
 
 	void ThrowGrenadeButtonPressed(const FInputActionValue& Value);
 
+	// Activate dash ability (GAS)
+	void DashButtonPressed(const FInputActionValue& Value);
+	
 	bool IsWeaponEquipped();
 
 	bool IsAiming();
@@ -225,7 +232,11 @@ protected:
 	FDelegateHandle MaxHealthChangedDelegateHandle;
 	FDelegateHandle ShieldChangedDelegateHandle;
 	FDelegateHandle MaxShieldChangedDelegateHandle;
-	
+	FDelegateHandle MoveSpeedChangedDelegateHandle;
+	FDelegateHandle JumpVelocityChangedDelegateHandle;
+
+	bool ActivateAbilityByTag(const FGameplayTag& AbilityTag) const;
+
 public: 	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;

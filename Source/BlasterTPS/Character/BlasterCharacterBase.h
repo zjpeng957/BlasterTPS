@@ -32,6 +32,10 @@ public:
 
 	UFUNCTION()
 	UBlasterAttributeSet* GetAttributeSet() const;
+	
+	// Give startup abilities (set in defaults/blueprint)
+	UFUNCTION()
+	void GiveStartupAbilities();
 
 protected:
 	// AbilitySystemComponent is now owned by PlayerState; Character will retrieve it from PlayerState at runtime.
@@ -42,4 +46,9 @@ protected:
 	// Attribute set moved to PlayerState; Character will access it via PlayerState
 
 	bool bAttributesInitialized = false;
+	bool bAbilitiesGiven = false;
+	
+	// Abilities to grant on initialization (set in Blueprint / defaults)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Abilities", meta = (AllowPrivateAccess = "true"))
+	TArray<TSubclassOf<class UGameplayAbility>> DefaultAbilities;
 };

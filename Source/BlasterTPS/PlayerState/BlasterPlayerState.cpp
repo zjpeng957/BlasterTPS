@@ -226,3 +226,4 @@ void ABlasterPlayerState::InitializeAttributes(TSubclassOf<UGameplayEffect> Defa
 		bAttributesInitialized = true;
 	}
 }
+

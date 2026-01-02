@@ -41,6 +41,16 @@ public:
 	FGameplayAttributeData MaxShield;
 	ATTRIBUTE_ACCESSORS(UBlasterAttributeSet, MaxShield)
 
+	// Movement speed (MaxWalkSpeed)
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, ReplicatedUsing = OnRep_MoveSpeed, Category = "Attributes")
+	FGameplayAttributeData MoveSpeed;
+	ATTRIBUTE_ACCESSORS(UBlasterAttributeSet, MoveSpeed)
+
+	// Jump velocity (JumpZVelocity)
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, ReplicatedUsing = OnRep_JumpVelocity, Category = "Attributes")
+	FGameplayAttributeData JumpVelocity;
+	ATTRIBUTE_ACCESSORS(UBlasterAttributeSet, JumpVelocity)
+
 	// UAttributeSet overrides
 	virtual void PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue) override;
 
@@ -55,6 +65,12 @@ public:
 
 	UFUNCTION()
 	virtual void OnRep_MaxShield(const FGameplayAttributeData& OldMaxShield);
+
+	UFUNCTION()
+	virtual void OnRep_MoveSpeed(const FGameplayAttributeData& OldMoveSpeed);
+
+	UFUNCTION()
+	virtual void OnRep_JumpVelocity(const FGameplayAttributeData& OldJumpVelocity);
 
 protected:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;

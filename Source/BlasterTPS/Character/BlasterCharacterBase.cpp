@@ -55,3 +55,22 @@ void ABlasterCharacterBase::InitializeAttributes(TSubclassOf<UGameplayEffect> De
 		}
 	}
 }
+
+void ABlasterCharacterBase::GiveStartupAbilities()
+{
+	if (!HasAuthority() || bAbilitiesGiven || !GetAbilitySystemComponent()) return;
+	for (const auto& AbilityClass : DefaultAbilities)
+	{
+		if (!AbilityClass) continue;
+		FGameplayAbilitySpecHandle AbilityHandle = GetAbilitySystemComponent()->GiveAbility(FGameplayAbilitySpec(AbilityClass));
+		if (AbilityHandle.IsValid())
+		{
+			UE_LOG(LogTemp, Log, TEXT("ability activate succ %s"), *AbilityClass->GetName());
+		}
+		else
+		{
+			UE_LOG(LogTemp, Log, TEXT("ability activate failed %s"), *AbilityClass->GetName());
+		}
+	}
+	bAbilitiesGiven = true;
+}

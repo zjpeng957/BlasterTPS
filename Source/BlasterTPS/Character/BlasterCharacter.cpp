@@ -283,6 +283,15 @@ void ABlasterCharacter::SimProxiesTurn()
 	TurningInPlace = ETurningInPlace::ETIP_NotTurning;
 }
 
+bool ABlasterCharacter::ActivateAbilityByTag(const FGameplayTag& AbilityTag) const
+{
+	if (AbilitySystemComponent)
+	{
+		return AbilitySystemComponent->TryActivateAbilitiesByTag(AbilityTag.GetSingleTagContainer());
+	}
+	return false;
+}
+
 // Called every frame
 void ABlasterCharacter::Tick(float DeltaTime)
 {
@@ -321,7 +330,9 @@ void ABlasterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 		EnhancedInputComponent->BindAction(FireAction, ETriggerEvent::Completed, this, &ABlasterCharacter::FireButtonReleased);
 		EnhancedInputComponent->BindAction(ReloadAction, ETriggerEvent::Started, this, &ABlasterCharacter::ReloadButtonPressed);
 		EnhancedInputComponent->BindAction(ThrowGrenadeAction, ETriggerEvent::Started, this, &ABlasterCharacter::ThrowGrenadeButtonPressed);
-
+		
+		// special abilities
+		EnhancedInputComponent->BindAction(DashAction, ETriggerEvent::Started, this, &ABlasterCharacter::DashButtonPressed);
 	}
 }
 
@@ -562,6 +573,14 @@ void ABlasterCharacter::Destroyed()
 		{
 			ASC->GetGameplayAttributeValueChangeDelegate(UBlasterAttributeSet::GetMaxShieldAttribute()).Remove(MaxShieldChangedDelegateHandle);
 		}
+		if (MoveSpeedChangedDelegateHandle.IsValid())
+		{
+			ASC->GetGameplayAttributeValueChangeDelegate(UBlasterAttributeSet::GetMoveSpeedAttribute()).Remove(MoveSpeedChangedDelegateHandle);
+		}
+		if (JumpVelocityChangedDelegateHandle.IsValid())
+		{
+			ASC->GetGameplayAttributeValueChangeDelegate(UBlasterAttributeSet::GetJumpVelocityAttribute()).Remove(JumpVelocityChangedDelegateHandle);
+		}
 	}
 
 	Super::Destroyed();
@@ -758,6 +777,17 @@ void ABlasterCharacter::ThrowGrenadeButtonPressed(const FInputActionValue& Value
 	if (Combat)
 	{
 		Combat->ThrowGrenade();
+	}
+}
+
+void ABlasterCharacter::DashButtonPressed(const FInputActionValue& Value)
+{
+	// Activate dash ability via ASC (GAS)
+	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponent())
+	{
+		// Try to activate by class. GA_Dash should be granted to the ASC (set in PlayerState DefaultAbilities)
+		auto res = ActivateAbilityByTag(BlasterGameplayTags::Abilities::Dash);
+		UE_LOG(LogTemp, Warning, TEXT("try activate dash:%d"), res);
 	}
 }
 
@@ -1103,6 +1133,9 @@ void ABlasterCharacter::PossessedBy(AController* NewController)
 			}
 		}
 	}
+	
+	// After attributes are initialized, give default abilities on server
+	GiveStartupAbilities();
 }
 
 // Add client-side PlayerState replication handler so clients can initialize their ASC
@@ -1148,6 +1181,8 @@ void ABlasterCharacter::InitializeAbilitySystem()
 			MaxHealthChangedDelegateHandle = ASC->GetGameplayAttributeValueChangeDelegate(UBlasterAttributeSet::GetMaxHealthAttribute()).AddUObject(this, &ABlasterCharacter::OnMaxHealthChanged);
 			ShieldChangedDelegateHandle = ASC->GetGameplayAttributeValueChangeDelegate(UBlasterAttributeSet::GetShieldAttribute()).AddUObject(this, &ABlasterCharacter::OnShieldChanged);
 			MaxShieldChangedDelegateHandle = ASC->GetGameplayAttributeValueChangeDelegate(UBlasterAttributeSet::GetMaxShieldAttribute()).AddUObject(this, &ABlasterCharacter::OnMaxShieldChanged);
+			MoveSpeedChangedDelegateHandle = ASC->GetGameplayAttributeValueChangeDelegate(UBlasterAttributeSet::GetMoveSpeedAttribute()).AddUObject(this, &ABlasterCharacter::OnMoveSpeedChanged);
+			JumpVelocityChangedDelegateHandle = ASC->GetGameplayAttributeValueChangeDelegate(UBlasterAttributeSet::GetJumpVelocityAttribute()).AddUObject(this, &ABlasterCharacter::OnJumpVelocityChanged);
 
 			// Initialize cached values
 			LastHealth = GetHealth();
@@ -1156,37 +1191,23 @@ void ABlasterCharacter::InitializeAbilitySystem()
 	}
 }
 
-void ABlasterCharacter::OnHealthChanged(const FOnAttributeChangeData& Data)
+void ABlasterCharacter::OnMoveSpeedChanged(const FOnAttributeChangeData& Data)
 {
-	float NewHealth = Data.NewValue;
-	// Update HUD
-	UpdateHUDHealth();
-	// Play hit react if decreased
-	if (NewHealth < LastHealth)
+	float NewMoveSpeed = Data.NewValue;
+	if (GetCharacterMovement())
 	{
-		PlayHitReactMontage();
+		GetCharacterMovement()->MaxWalkSpeed = NewMoveSpeed;
+		UpdateHUDAmmo(); // not directly related, but keep HUD update pattern; consider creating UpdateHUDMovement
 	}
-	LastHealth = NewHealth;
 }
 
-void ABlasterCharacter::OnMaxHealthChanged(const FOnAttributeChangeData& Data)
+void ABlasterCharacter::OnJumpVelocityChanged(const FOnAttributeChangeData& Data)
 {
-	UpdateHUDHealth();
-}
-
-void ABlasterCharacter::OnShieldChanged(const FOnAttributeChangeData& Data)
-{
-	float NewShield = Data.NewValue;
-	UpdateHUDShield();
-	if (NewShield < LastShield)
+	float NewJumpVelocity = Data.NewValue;
+	if (GetCharacterMovement())
 	{
-		PlayHitReactMontage();
+		GetCharacterMovement()->JumpZVelocity = NewJumpVelocity;
 	}
-	LastShield = NewShield;
 }
 
-void ABlasterCharacter::OnMaxShieldChanged(const FOnAttributeChangeData& Data)
-{
-	UpdateHUDShield();
-}
 
