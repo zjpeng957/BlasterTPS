@@ -431,6 +431,17 @@ void ABlasterCharacter::PlayFireMontage(bool bAiming)
 
 void ABlasterCharacter::PlayHitReactMontage()
 {
+	// Try to activate HitReact ability via GAS first
+	if (AbilitySystemComponent)
+	{
+		if (ActivateAbilityByTag(BlasterGameplayTags::Abilities::HitReact))
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Activated HitReact ability via GAS"));
+			return;
+		}
+	}
+
+	// Fallback: play montage directly (for non-GAS setups)
 	if (Combat == nullptr || Combat->EquippedWeapon == nullptr) return;
 	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
 	if (AnimInstance && HitReactMontage)
@@ -438,7 +449,7 @@ void ABlasterCharacter::PlayHitReactMontage()
 		AnimInstance->Montage_Play(HitReactMontage);
 		FName SectionName("FromFront");
 		AnimInstance->Montage_JumpToSection(SectionName);
-		UE_LOG(LogTemp, Warning, TEXT("play hit react"));
+		UE_LOG(LogTemp, Warning, TEXT("play hit react fallback"));
 	}
 }
 
@@ -1211,3 +1222,36 @@ void ABlasterCharacter::OnJumpVelocityChanged(const FOnAttributeChangeData& Data
 }
 
 
+void ABlasterCharacter::OnHealthChanged(const FOnAttributeChangeData& Data)
+{
+	float NewHealth = Data.NewValue;
+	// Update HUD
+	UpdateHUDHealth();
+	// Play hit react if decreased
+	if (NewHealth < LastHealth)
+	{
+		PlayHitReactMontage();
+	}
+	LastHealth = NewHealth;
+}
+
+void ABlasterCharacter::OnMaxHealthChanged(const FOnAttributeChangeData& Data)
+{
+	UpdateHUDHealth();
+}
+
+void ABlasterCharacter::OnShieldChanged(const FOnAttributeChangeData& Data)
+{
+	float NewShield = Data.NewValue;
+	UpdateHUDShield();
+	if (NewShield < LastShield)
+	{
+		PlayHitReactMontage();
+	}
+	LastShield = NewShield;
+}
+
+void ABlasterCharacter::OnMaxShieldChanged(const FOnAttributeChangeData& Data)
+{
+	UpdateHUDShield();
+}

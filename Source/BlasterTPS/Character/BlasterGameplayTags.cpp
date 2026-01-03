@@ -9,6 +9,7 @@ namespace BlasterGameplayTags
 	namespace Abilities
 	{
 		UE_DEFINE_GAMEPLAY_TAG_COMMENT(Dash, "Abilities.Dash", "Abilities tag used by dash/sprint gameplay ability.");
+		UE_DEFINE_GAMEPLAY_TAG_COMMENT(HitReact, "Abilities.HitReact", "Abilities tag used by hit react gameplay ability.");
 	}
 	namespace SetByCaller
 	{
