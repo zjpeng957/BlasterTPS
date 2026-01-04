@@ -10,6 +10,7 @@ namespace BlasterGameplayTags
 	{
 		UE_DECLARE_GAMEPLAY_TAG_EXTERN(Dash);
 		UE_DECLARE_GAMEPLAY_TAG_EXTERN(HitReact);
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(Spike);
 	}
 	namespace SetByCaller
 	{
@@ -20,6 +21,8 @@ namespace BlasterGameplayTags
 	{
 		UE_DECLARE_GAMEPLAY_TAG_EXTERN(Stunned);
 		UE_DECLARE_GAMEPLAY_TAG_EXTERN(Dashing);
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(Burning);
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(Targeting);
 	}
 
 	namespace Cooldown

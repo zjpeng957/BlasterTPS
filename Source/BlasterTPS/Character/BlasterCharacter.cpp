@@ -27,7 +27,7 @@
 #include "GameplayEffect.h"
 #include "GameplayTagContainer.h"
 #include "BlasterTPS/Character/BlasterAttributeSet.h"
-#include "BlasterGameplayTags.h"
+#include "BlasterTPS/AbilitySystem/Tags/BlasterGameplayTags.h"
 
 // Sets default values
 ABlasterCharacter::ABlasterCharacter()
@@ -333,6 +333,18 @@ void ABlasterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 		
 		// special abilities
 		EnhancedInputComponent->BindAction(DashAction, ETriggerEvent::Started, this, &ABlasterCharacter::DashButtonPressed);
+		EnhancedInputComponent->BindAction(PrimaryAction, ETriggerEvent::Started, this, &ABlasterCharacter::PrimaryButtonPressed);
+		EnhancedInputComponent->BindAction(UltimateAction, ETriggerEvent::Started, this, &ABlasterCharacter::UltimateButtonPressed);
+
+		// GAS Confirm/Cancel
+		if (ConfirmAction)
+		{
+			EnhancedInputComponent->BindAction(ConfirmAction, ETriggerEvent::Triggered, GetAbilitySystemComponent(), &UAbilitySystemComponent::LocalInputConfirm);
+		}
+		if (CancelAction)
+		{
+			EnhancedInputComponent->BindAction(CancelAction, ETriggerEvent::Triggered, GetAbilitySystemComponent(), &UAbilitySystemComponent::LocalInputCancel);
+		}
 	}
 }
 
@@ -759,6 +771,7 @@ void ABlasterCharacter::AimButtonReleased(const FInputActionValue& Value)
 void ABlasterCharacter::FireButtonPressed(const FInputActionValue& Value)
 {
 	if (bDisableGameplay) return;
+
 	if (Combat)
 	{
 		Combat->FireButtonPressed(true);
@@ -794,12 +807,24 @@ void ABlasterCharacter::ThrowGrenadeButtonPressed(const FInputActionValue& Value
 void ABlasterCharacter::DashButtonPressed(const FInputActionValue& Value)
 {
 	// Activate dash ability via ASC (GAS)
-	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponent())
+	if (GetAbilitySystemComponent())
 	{
 		// Try to activate by class. GA_Dash should be granted to the ASC (set in PlayerState DefaultAbilities)
-		auto res = ActivateAbilityByTag(BlasterGameplayTags::Abilities::Dash);
-		UE_LOG(LogTemp, Warning, TEXT("try activate dash:%d"), res);
+		auto Result = ActivateAbilityByTag(BlasterGameplayTags::Abilities::Dash);
+		UE_LOG(LogTemp, Warning, TEXT("try activate dash:%d"), Result);
 	}
+}
+
+void ABlasterCharacter::PrimaryButtonPressed(const FInputActionValue& Value)
+{
+	if (GetAbilitySystemComponent())
+	{
+		ActivateAbilityByTag(BlasterGameplayTags::Abilities::Spike);
+	}
+}
+
+void ABlasterCharacter::UltimateButtonPressed(const FInputActionValue& Value)
+{
 }
 
 bool ABlasterCharacter::IsWeaponEquipped()
@@ -1255,3 +1280,32 @@ void ABlasterCharacter::OnMaxShieldChanged(const FOnAttributeChangeData& Data)
 {
 	UpdateHUDShield();
 }
+
+void ABlasterCharacter::AddTargetingMappingContext()
+{
+	if (APlayerController* PC = Cast<APlayerController>(Controller))
+	{
+		if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PC->GetLocalPlayer()))
+		{
+			if (TargetingMappingContext)
+			{
+				Subsystem->AddMappingContext(TargetingMappingContext, TargetingMappingPriority);
+			}
+		}
+	}
+}
+
+void ABlasterCharacter::RemoveTargetingMappingContext()
+{
+	if (APlayerController* PC = Cast<APlayerController>(Controller))
+	{
+		if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PC->GetLocalPlayer()))
+		{
+			if (TargetingMappingContext)
+			{
+				Subsystem->RemoveMappingContext(TargetingMappingContext);
+			}
+		}
+	}
+}
+

@@ -79,6 +79,27 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "Input")
 	UInputAction* DashAction;
 
+	UPROPERTY(EditDefaultsOnly, Category = "Input")
+	UInputAction* PrimaryAction;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Input")
+	UInputAction* UltimateAction;
+	
+	UPROPERTY(EditDefaultsOnly, Category = "Input")
+	UInputAction* ConfirmAction;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Input")
+	UInputAction* CancelAction;
+	
+	UPROPERTY(EditAnywhere, Category = "Input")
+	class UInputMappingContext* TargetingMappingContext;
+
+	UPROPERTY(EditAnywhere, Category = "Input")
+	int32 TargetingMappingPriority = 1;
+
+	void AddTargetingMappingContext();
+	void RemoveTargetingMappingContext();
+
 	void Move(const FInputActionValue& Value);
 
 	void Look(const FInputActionValue& Value);
@@ -105,6 +126,10 @@ public:
 
 	// Activate dash ability (GAS)
 	void DashButtonPressed(const FInputActionValue& Value);
+
+	void PrimaryButtonPressed(const FInputActionValue& Value);
+
+	void UltimateButtonPressed(const FInputActionValue& Value);
 	
 	bool IsWeaponEquipped();
 
