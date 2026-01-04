@@ -905,34 +905,10 @@ void ABlasterCharacter::ReceiveDamage(AActor* DamagedActor, float Damage, const 
 			}
 		}
 
-		// Update HUD after attribute changes
-		UpdateHUDShield();
-		UpdateHUDHealth();
-
-		// Play hit react if necessary: check last cached values
-		if (GetHealth() < LastHealth)
-		{
-			PlayHitReactMontage();
-		}
-		if (GetShield() < LastShield)
-		{
-			PlayHitReactMontage();
-		}
-
-		LastHealth = GetHealth();
-		LastShield = GetShield();
-
-		// Check elimination
-		if (FMath::IsNearlyZero(GetHealth()))
-		{
-			if (ABlasterGameMode* BlasterGameMode = GetWorld()->GetAuthGameMode<ABlasterGameMode>())
-			{
-				BlasterPlayerController = BlasterPlayerController == nullptr ? Cast<ABlasterPlayerController>(Controller) : BlasterPlayerController;
-				ABlasterPlayerController* AttackerController = Cast<ABlasterPlayerController>(InstigatedBy);
-				BlasterGameMode->PlayerEliminated(this, BlasterPlayerController, AttackerController);
-			}
-		}
-
+		// Note: HUD updates, Hit React, and Elimination are now handled by:
+		// 1. OnHealthChanged/OnShieldChanged delegates (HUD, Hit React)
+		// 2. BlasterAttributeSet::PostGameplayEffectExecute (Elimination)
+		
 		return;
 	}
 

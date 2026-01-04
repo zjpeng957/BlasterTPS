@@ -11,7 +11,8 @@ UAbility_Spike::UAbility_Spike()
 
 void UAbility_Spike::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
 {
-	if (!CommitAbility(Handle, ActorInfo, ActivationInfo))
+	// 只检查消耗，不立即提交（不扣费、不冷却），等到确认放置时再提交
+	if (!CheckCost(Handle, ActorInfo))
 	{
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 		return;
@@ -40,7 +41,7 @@ void UAbility_Spike::ActivateAbility(const FGameplayAbilitySpecHandle Handle, co
 	}
 
 	AActor* OwnerActor = GetOwningActorFromActorInfo();
-	APawn* AvatarPawn = Cast<APawn>(OwnerActor);
+	APawn* AvatarPawn = Cast<APawn>(GetAvatarActorFromActorInfo());
 
 	AGameplayAbilityTargetActor* TargetActor = GetWorld()->SpawnActorDeferred<AGameplayAbilityTargetActor>(
 		TargetActorClass, 
@@ -95,13 +96,30 @@ void UAbility_Spike::ActivateAbility(const FGameplayAbilitySpecHandle Handle, co
 				const FHitResult* HitResult = TargetData->GetHitResult();
 				if (HitResult && HitResult->bBlockingHit)
 				{
+					// 确认放置，此时提交消耗和冷却
+					if (!CommitAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo))
+					{
+						EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, true);
+						return;
+					}
+
 					FTransform SpawnTransform;
 					SpawnTransform.SetLocation(HitResult->Location);
 					SpawnTransform.SetRotation(FQuat::Identity);
 
 					if (GetWorld())
 					{
-						ASpikeActor* Spike = GetWorld()->SpawnActorDeferred<ASpikeActor>(SpikeActorClass, SpawnTransform, GetOwningActorFromActorInfo(), Cast<APawn>(GetOwningActorFromActorInfo()), ESpawnActorCollisionHandlingMethod::AlwaysSpawn);
+						AActor* OwnerActor = GetOwningActorFromActorInfo();
+						APawn* InstigatorPawn = Cast<APawn>(GetAvatarActorFromActorInfo());
+						
+						ASpikeActor* Spike = GetWorld()->SpawnActorDeferred<ASpikeActor>(
+							SpikeActorClass, 
+							SpawnTransform, 
+							OwnerActor, 
+							InstigatorPawn, 
+							ESpawnActorCollisionHandlingMethod::AlwaysSpawn
+						);
+						
 						if (Spike)
 						{
 							Spike->FinishSpawning(SpawnTransform);
