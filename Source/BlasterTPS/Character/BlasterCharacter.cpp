@@ -28,6 +28,7 @@
 #include "GameplayTagContainer.h"
 #include "BlasterTPS/Character/BlasterAttributeSet.h"
 #include "BlasterTPS/AbilitySystem/Tags/BlasterGameplayTags.h"
+#include "AbilitySystemBlueprintLibrary.h"
 
 // Sets default values
 ABlasterCharacter::ABlasterCharacter()
@@ -191,6 +192,7 @@ void ABlasterCharacter::BeginPlay()
 	UpdateHUDAmmo();
 	UpdateHUDHealth();
 	UpdateHUDShield();
+	UpdateHUDMana();
 	BlasterPlayerController = BlasterPlayerController == nullptr ? Cast<ABlasterPlayerController>(Controller) : BlasterPlayerController;
 	if (BlasterPlayerController)
 	{
@@ -821,14 +823,50 @@ void ABlasterCharacter::ReceiveDamage(AActor* DamagedActor, float Damage, const 
 	UE_LOG(LogTemp, Warning, TEXT("ReceiveDamage_%s: Role=%d RemoteRole=%d HasAuthority=%d Damage=%.1f"),
 		*GetName(), (int32)GetLocalRole(), (int32)GetRemoteRole(), HasAuthority(), Damage);
 	// If we have an AbilitySystemComponent and GameplayEffects configured, prefer applying damage via ASC
-	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponent())
+	if (UAbilitySystemComponent* TargetASC = GetAbilitySystemComponent())
 	{
 		// Use DamageGameplayEffect which should be configured with BlasterDamageExecutionCalc
 		if (DamageGameplayEffect)
 		{
-			FGameplayEffectContextHandle EffectContext = ASC->MakeEffectContext();
+			UAbilitySystemComponent* SourceASC = nullptr;
+			if (InstigatedBy)
+			{
+				SourceASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(InstigatedBy->GetPawn());
+				if (!SourceASC && InstigatedBy->PlayerState)
+				{
+					SourceASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(InstigatedBy->PlayerState);
+				}
+			}
+			if (!SourceASC && DamageCauser)
+			{
+				SourceASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(DamageCauser);
+				if (!SourceASC)
+				{
+					if (APawn* CauserPawn = Cast<APawn>(DamageCauser))
+					{
+						if (CauserPawn->GetPlayerState())
+						{
+							SourceASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(CauserPawn->GetPlayerState());
+						}
+					}
+					else if (APawn* InstigatorPawn = DamageCauser->GetInstigator())
+					{
+						SourceASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(InstigatorPawn);
+						if (!SourceASC && InstigatorPawn->GetPlayerState())
+						{
+							SourceASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(InstigatorPawn->GetPlayerState());
+						}
+					}
+				}
+			}
+
+			UAbilitySystemComponent* ContextASC = SourceASC ? SourceASC : TargetASC;
+
+			FGameplayEffectContextHandle EffectContext = ContextASC->MakeEffectContext();
 			EffectContext.AddSourceObject(DamageCauser ? DamageCauser : this);
-			FGameplayEffectSpecHandle SpecHandle = ASC->MakeOutgoingSpec(DamageGameplayEffect, 1.f, EffectContext);
+			EffectContext.AddInstigator(InstigatedBy, DamageCauser);
+
+			FGameplayEffectSpecHandle SpecHandle = ContextASC->MakeOutgoingSpec(DamageGameplayEffect, 1.f, EffectContext);
 			if (SpecHandle.IsValid())
 			{
 				// Pass the full damage amount. The ExecutionCalculation will handle splitting between Shield and Health.
@@ -837,84 +875,10 @@ void ABlasterCharacter::ReceiveDamage(AActor* DamagedActor, float Damage, const 
 				// but here it's a magnitude.
 				// In BlasterDamageExecutionCalc, we check if it's negative and flip it to positive for calculation, then apply negative modifiers.
 				SpecHandle.Data->SetSetByCallerMagnitude(BlasterGameplayTags::SetByCaller::Damage, -Damage);
-				ASC->ApplyGameplayEffectSpecToTarget(*SpecHandle.Data.Get(), ASC);
+				ContextASC->ApplyGameplayEffectSpecToTarget(*SpecHandle.Data.Get(), TargetASC);
 			}
 		}
-		else
-		{
-			// Fallback if no GE is set
-			float DamageToHealth = Damage;
-			if (GetShield() > 0.f)
-			{
-				if (GetShield() >= Damage)
-				{
-					SetShield(FMath::Clamp(GetShield() - Damage, 0.f, GetMaxShield()));
-					DamageToHealth = 0.f;
-				}
-				else
-				{
-					DamageToHealth = FMath::Clamp(Damage - GetShield(), 0.f, Damage);
-					SetShield(0.f);
-				}
-			}
-
-			float NewHealth = FMath::Clamp(GetHealth() - DamageToHealth, 0.f, GetMaxHealth());
-			SetHealth(NewHealth);
-		}
-		return;
 	}
-
-	// Fallback path: no ASC available - keep existing logic
-	float DamageToHealth = Damage;
-	if (GetShield() > 0.f)
-	{
-		if (GetShield() >= Damage)
-		{
-			SetShield(FMath::Clamp(GetShield() - Damage, 0.f, GetMaxShield()));
-			DamageToHealth = 0.f;
-		}
-		else
-		{
-			DamageToHealth = FMath::Clamp(Damage - GetShield(), 0.f, Damage);
-			SetShield(0.f);
-		}
-	}
-
-	float NewHealth = FMath::Clamp(GetHealth() - DamageToHealth, 0.f, GetMaxHealth());
-	SetHealth(NewHealth);
-
-	UpdateHUDShield();
-	UpdateHUDHealth();
-	//PlayHitReactMontage();
-	// If we are here, it means we didn't use GAS to apply damage (fallback path).
-	// Since we removed PlayHitReactMontage, we should manually trigger it here if we want visual feedback for non-GAS damage.
-	// However, since we are moving towards full GAS, we can rely on OnHealthChanged/OnShieldChanged which are triggered by SetHealth/SetShield?
-	// NO. SetHealth/SetShield on AttributeSet (via direct setter) does NOT trigger ASC's AttributeChangeDelegate unless it goes through the ASC modification pipeline?
-	// Actually, SetHealth calls GAMEPLAYATTRIBUTE_REPNOTIFY which handles replication.
-	// But local modification via setter:
-	// If we call SetHealth on the character, it calls PS->SetHealth.
-	// PS->SetHealth calls AttributeSet->SetHealth.
-	// AttributeSet->SetHealth just sets the value. It does NOT broadcast the ASC delegate.
-	// The ASC delegate is broadcast when the attribute value is modified via the ASC (e.g. GE).
-	// So for this fallback path, OnHealthChanged will NOT be called automatically by the ASC delegate!
-	// We must manually trigger the visual effect here if we want it.
-	
-	// For now, let's manually activate the ability if we have ASC, or play montage directly if not.
-	if (AbilitySystemComponent)
-	{
-		ActivateAbilityByTag(BlasterGameplayTags::Abilities::HitReact);
-	}
-	// else
-	// {
-	// 	// Fallback for no ASC (shouldn't happen in this setup but good for safety)
-	// 	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
-	// 	if (AnimInstance && HitReactMontage)
-	// 	{
-	// 		AnimInstance->Montage_Play(HitReactMontage);
-	// 		FName SectionName("FromFront");
-	// 		AnimInstance->Montage_JumpToSection(SectionName);
-	// 	}
-	// }
 }
 
 void ABlasterCharacter::PollInit()
@@ -1147,6 +1111,7 @@ void ABlasterCharacter::OnRep_PlayerState()
 		UpdateHUDHealth();
 		UpdateHUDShield();
 		UpdateHUDAmmo();
+		UpdateHUDMana();
 	}
 	UE_LOG(LogTemp, Warning, TEXT("OnRep_PlayerState called for %s"), *GetName());
 }

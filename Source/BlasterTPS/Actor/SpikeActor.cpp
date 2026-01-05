@@ -43,6 +43,7 @@ void ASpikeActor::OnOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActo
 		{
 			FGameplayEffectContextHandle ContextHandle = TargetASC->MakeEffectContext();
 			ContextHandle.AddSourceObject(this);
+			ContextHandle.AddInstigator(GetInstigator(), this);
 			
 			// Apply periodic damage effect
 			FGameplayEffectSpecHandle SpecHandle = TargetASC->MakeOutgoingSpec(DamageEffectClass, 1.0f, ContextHandle);

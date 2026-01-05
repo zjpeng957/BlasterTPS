@@ -7,6 +7,8 @@
 #include "AbilitySystemComponent.h"
 #include "BlasterAttributeSet.generated.h"
 
+class UGameplayEffect;
+
 #define ATTRIBUTE_ACCESSORS(ClassName, PropertyName) \
 GAMEPLAYATTRIBUTE_PROPERTY_GETTER(ClassName, PropertyName) \
 GAMEPLAYATTRIBUTE_VALUE_GETTER(PropertyName) \
@@ -93,6 +95,16 @@ public:
 
 	UFUNCTION()
 	virtual void OnRep_JumpVelocity(const FGameplayAttributeData& OldJumpVelocity);
+
+	// Gameplay Effect to use for restoring Mana when damage is dealt.
+	// If set, this GE will be applied with SetByCaller magnitude for Mana.
+	// The GE should have a modifier for Mana using SetByCaller (Tag: Data.Damage or similar? No, we need a specific tag for Mana Restore Amount).
+	// Or we can just use the same tag "Data.Damage" and interpret it as "Amount" in the GE?
+	// Let's use a new tag "Data.ManaRestore" or just reuse "Data.Damage" if convenient, but "Data.ManaRestore" is cleaner.
+	// However, for simplicity, I will assume the GE uses "Data.Damage" (as magnitude) or I will define a new tag.
+	// Actually, I can just use "Data.Damage" tag for the magnitude, as it represents the damage dealt.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Abilities")
+	TSubclassOf<UGameplayEffect> ManaRestoreEffectClass;
 
 protected:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;

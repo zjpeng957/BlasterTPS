@@ -10,6 +10,92 @@
 #include "BlasterTPS/PlayerController/BlasterPlayerController.h"
 #include "BlasterTPS/GameMode/BlasterGameMode.h"
 #include "Kismet/GameplayStatics.h"
+#include "BlasterTPS/AbilitySystem/Tags/BlasterGameplayTags.h"
+
+namespace
+{
+	static UAbilitySystemComponent* GetASCFromActor(AActor* Actor)
+	{
+		if (!Actor)
+		{
+			return nullptr;
+		}
+
+		if (IAbilitySystemInterface* ASI = Cast<IAbilitySystemInterface>(Actor))
+		{
+			return ASI->GetAbilitySystemComponent();
+		}
+
+		if (UAbilitySystemComponent* ASC = Actor->FindComponentByClass<UAbilitySystemComponent>())
+		{
+			return ASC;
+		}
+
+		if (APawn* Pawn = Cast<APawn>(Actor))
+		{
+			if (APlayerState* PS = Pawn->GetPlayerState())
+			{
+				return GetASCFromActor(PS);
+			}
+		}
+
+		if (AController* Controller = Cast<AController>(Actor))
+		{
+			if (APlayerState* PS = Controller->PlayerState)
+			{
+				return GetASCFromActor(PS);
+			}
+		}
+
+		return nullptr;
+	}
+
+	// Resolve the real attacker ASC from GameplayEffectContext.
+	// We prefer EffectCauser/Instigator over OriginalInstigatorAbilitySystemComponent because the latter
+	// can legitimately be the Target ASC for some application paths, which breaks "attacker != target" checks.
+	static UAbilitySystemComponent* ResolveAttackerASC(const FGameplayEffectModCallbackData& Data)
+	{
+		const FGameplayEffectContextHandle& Context = Data.EffectSpec.GetContext();
+
+		if (AActor* Causer = Context.GetEffectCauser())
+		{
+			if (UAbilitySystemComponent* ASC = GetASCFromActor(Causer))
+			{
+				return ASC;
+			}
+		}
+
+		if (AActor* Instigator = Context.GetOriginalInstigator())
+		{
+			if (UAbilitySystemComponent* ASC = GetASCFromActor(Instigator))
+			{
+				return ASC;
+			}
+		}
+
+		if (UAbilitySystemComponent* OriginalASC = Context.GetOriginalInstigatorAbilitySystemComponent())
+		{
+			return OriginalASC;
+		}
+
+		// Fallback: try Target's instigator pawn (covers some non-ability damage paths)
+		if (Data.Target.AbilityActorInfo.IsValid() && Data.Target.AbilityActorInfo->AvatarActor.IsValid())
+		{
+			if (AActor* TargetActor = Data.Target.AbilityActorInfo->AvatarActor.Get())
+			{
+				if (APawn* InstigatorPawn = TargetActor->GetInstigator())
+				{
+					if (UAbilitySystemComponent* ASC = GetASCFromActor(InstigatorPawn))
+					{
+						return ASC;
+					}
+				}
+			}
+		}
+
+		return nullptr;
+	}
+}
 
 UBlasterAttributeSet::UBlasterAttributeSet()
 {
@@ -137,66 +223,82 @@ void UBlasterAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCal
 	Super::PostGameplayEffectExecute(Data);
 
 	FGameplayEffectContextHandle Context = Data.EffectSpec.GetContext();
-	UAbilitySystemComponent* Source = Context.GetOriginalInstigatorAbilitySystemComponent();
 
-	// Get the Target actor, which should be our owner
-	AActor* TargetActor = nullptr;
+	UAbilitySystemComponent* TargetASC = (Data.Target.AbilityActorInfo.IsValid() ? Data.Target.AbilityActorInfo->AbilitySystemComponent.Get() : nullptr);
+	UAbilitySystemComponent* AttackerASC = ResolveAttackerASC(Data);
+
+	// Target context (used for death/elimination)
 	AController* TargetController = nullptr;
 	ABlasterCharacter* TargetCharacter = nullptr;
 	if (Data.Target.AbilityActorInfo.IsValid() && Data.Target.AbilityActorInfo->AvatarActor.IsValid())
 	{
-		TargetActor = Data.Target.AbilityActorInfo->AvatarActor.Get();
 		TargetController = Data.Target.AbilityActorInfo->PlayerController.Get();
-		TargetCharacter = Cast<ABlasterCharacter>(TargetActor);
+		TargetCharacter = Cast<ABlasterCharacter>(Data.Target.AbilityActorInfo->AvatarActor.Get());
 	}
 
-	// Get the Source actor
-	AActor* SourceActor = nullptr;
+	// Source controller (used for elimination credit)
 	AController* SourceController = nullptr;
-	//ABlasterCharacter* SourceCharacter = nullptr;
-	if (Source && Source->AbilityActorInfo.IsValid() && Source->AbilityActorInfo->AvatarActor.IsValid())
+	if (AttackerASC && AttackerASC->AbilityActorInfo.IsValid())
 	{
-		SourceActor = Source->AbilityActorInfo->AvatarActor.Get();
-		SourceController = Source->AbilityActorInfo->PlayerController.Get();
-		if (SourceController == nullptr && SourceActor != nullptr)
+		SourceController = AttackerASC->AbilityActorInfo->PlayerController.Get();
+
+		// Fallback: if no PC (AI or non-player pawn), derive controller from avatar
+		if (SourceController == nullptr && AttackerASC->AbilityActorInfo->AvatarActor.IsValid())
 		{
-			if (APawn* Pawn = Cast<APawn>(SourceActor))
+			if (APawn* Pawn = Cast<APawn>(AttackerASC->AbilityActorInfo->AvatarActor.Get()))
 			{
 				SourceController = Pawn->GetController();
 			}
 		}
-
-		// Use the controller to find the source pawn
-		if (SourceController)
-		{
-			//SourceCharacter = Cast<ABlasterCharacter>(SourceController->GetPawn());
-		}
-		else
-		{
-			//SourceCharacter = Cast<ABlasterCharacter>(SourceActor);
-		}
-
-		// Set the causer actor based on context if it's set
-		if (Context.GetEffectCauser())
-		{
-			SourceActor = Context.GetEffectCauser();
-		}
 	}
+
+	auto TryRestoreManaToAttacker = [&](float DamageDealt)
+	{
+		if (DamageDealt <= 0.f)
+		{
+			return;
+		}
+		if (!AttackerASC || !TargetASC)
+		{
+			return;
+		}
+
+		// Don't restore mana for self-damage / environmental cases where attacker can't be resolved distinctly.
+		if (AttackerASC == TargetASC)
+		{
+			return;
+		}
+
+		if (!ManaRestoreEffectClass)
+		{
+			return;
+		}
+
+		FGameplayEffectContextHandle EffectContext = AttackerASC->MakeEffectContext();
+		EffectContext.AddSourceObject(AttackerASC->GetAvatarActor());
+		FGameplayEffectSpecHandle SpecHandle = AttackerASC->MakeOutgoingSpec(ManaRestoreEffectClass, 1.0f, EffectContext);
+		if (SpecHandle.IsValid())
+		{
+			SpecHandle.Data->SetSetByCallerMagnitude(BlasterGameplayTags::SetByCaller::Mana, DamageDealt);
+			AttackerASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+		}
+	};
 
 	if (Data.EvaluatedData.Attribute == GetHealthAttribute())
 	{
 		SetHealth(FMath::Clamp(GetHealth(), 0.f, GetMaxHealth()));
+
+		// Restore Mana to attacker equal to damage dealt (Health part)
+		const float DamageDealt = -Data.EvaluatedData.Magnitude;
+		TryRestoreManaToAttacker(DamageDealt);
 
 		if (TargetCharacter && GetHealth() <= 0.f && !TargetCharacter->IsElimmed())
 		{
 			// Target died
 			if (ABlasterGameMode* GM = Cast<ABlasterGameMode>(UGameplayStatics::GetGameMode(GetWorld())))
 			{
-				// We need BlasterPlayerController for the eliminated player
 				ABlasterPlayerController* TargetPC = Cast<ABlasterPlayerController>(TargetController);
-				// We need BlasterPlayerController for the attacker
 				ABlasterPlayerController* AttackerPC = Cast<ABlasterPlayerController>(SourceController);
-
 				GM->PlayerEliminated(TargetCharacter, TargetPC, AttackerPC);
 			}
 		}
@@ -204,6 +306,10 @@ void UBlasterAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCal
 	else if (Data.EvaluatedData.Attribute == GetShieldAttribute())
 	{
 		SetShield(FMath::Clamp(GetShield(), 0.f, GetMaxShield()));
+
+		// Restore Mana to attacker equal to damage dealt (Shield part)
+		const float DamageDealt = -Data.EvaluatedData.Magnitude;
+		TryRestoreManaToAttacker(DamageDealt);
 	}
 	else if (Data.EvaluatedData.Attribute == GetManaAttribute())
 	{
