@@ -470,6 +470,7 @@ void ABlasterPlayerController::PollInit()
 				if (bInitializedGrenades) SetHUDGrenades(HUDGrenades);
 				if (bInitializedCarriedAmmo) SetHUDCarriedAmmo(HUDCarriedAmmo);
 				if (bInitializedWeaponAmmo) SetHUDWeaponAmmo(HUDWeaponAmmo);
+				if (bInitializedMana) SetHUDMana(HUDMana, HUDMaxMana);
 
 				ABlasterCharacter* BlasterCharacter = Cast< ABlasterCharacter>(GetPawn());
 				if (BlasterCharacter && BlasterCharacter->GetCombat())
@@ -529,3 +530,27 @@ void ABlasterPlayerController::ClientReportServerTime_Implementation(float TimeO
 	float CurrentServerTime = TimeServerReceivedClientRequest + (0.5 * RoundTripTime);
 	ClientServerDelta = CurrentServerTime - GetWorld()->GetTimeSeconds();
 }
+
+void ABlasterPlayerController::SetHUDMana(float Mana, float MaxMana)
+{
+	BlasterHUD = BlasterHUD == nullptr ? Cast<ABlasterHUD>(GetHUD()) : BlasterHUD;
+	bool bHUDValid = BlasterHUD &&
+		BlasterHUD->CharacterOverlay &&
+		BlasterHUD->CharacterOverlay->ManaBar &&
+		BlasterHUD->CharacterOverlay->ManaText;
+	if (bHUDValid)
+	{
+		const float ManaPercent = Mana / MaxMana;
+		BlasterHUD->CharacterOverlay->ManaBar->SetPercent(ManaPercent);
+		FString ManaText = FString::Printf(TEXT("%d / %d"), FMath::CeilToInt(Mana), FMath::CeilToInt(MaxMana));
+		BlasterHUD->CharacterOverlay->ManaText->SetText(FText::FromString(ManaText));
+	}
+	else
+	{
+		bInitializedMana = true;
+		HUDMana = Mana;
+		HUDMaxMana = MaxMana;
+	}
+}
+
+

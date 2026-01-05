@@ -26,6 +26,7 @@ public:
 	void SetHUDMatchCountdown(float CountdownTime);
 	void SetHUDAnnouncementCountdown(float CountdownTime);
 	void SetHUDGrenades(int32 Grenades);
+	void SetHUDMana(float Mana, float MaxMana);
 	virtual void OnPossess(APawn* InPawn) override;
 	virtual void Tick(float DeltaSeconds) override;
 	virtual void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const override;
@@ -107,6 +108,9 @@ private:
 	bool bInitializedCarriedAmmo = false;
 	float HUDWeaponAmmo;
 	bool bInitializedWeaponAmmo = false;
+	float HUDMana;
+	float HUDMaxMana;
+	bool bInitializedMana = false;
 
 	float HighPingRunningTime = 0.f;
 	float PingAnimationRunningTime = 0.f;

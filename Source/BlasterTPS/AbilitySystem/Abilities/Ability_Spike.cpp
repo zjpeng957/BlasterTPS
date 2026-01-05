@@ -1,5 +1,6 @@
 #include "Ability_Spike.h"
 #include "Abilities/Tasks/AbilityTask_WaitTargetData.h"
+#include "Abilities/Tasks/AbilityTask_WaitDelay.h"
 #include "Abilities/GameplayAbilityTargetActor_GroundTrace.h"
 #include "BlasterTPS/Actor/SpikeActor.h"
 #include "BlasterTPS/Actor/SpikeTarget.h"
@@ -16,6 +17,16 @@ void UAbility_Spike::ActivateAbility(const FGameplayAbilitySpecHandle Handle, co
 	{
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 		return;
+	}
+
+	// Play Casting Montage
+	if (CastingMontage)
+	{
+		if (UAnimInstance* AnimInstance = GetCurrentActorInfo()->GetAnimInstance())
+		{
+			AnimInstance->Montage_Play(CastingMontage);
+			AnimInstance->Montage_JumpToSection(TargetingStartSection, CastingMontage);
+		}
 	}
 
 	UE_LOG(LogTemp, Warning, TEXT("Ability_Spike Activated. TargetActorClass: %s"), *GetNameSafe(TargetActorClass));
@@ -128,10 +139,70 @@ void UAbility_Spike::ActivateAbility(const FGameplayAbilitySpecHandle Handle, co
 				}
 			}
 		}
-		EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
+		
+		if (CastingMontage)
+		{
+			if (UAnimInstance* AnimInstance = GetCurrentActorInfo()->GetAnimInstance())
+			{
+				AnimInstance->Montage_JumpToSection(TargetingEndSection, CastingMontage);
+			}
+			
+			float Duration = 0.5f;
+			int32 SectionIndex = CastingMontage->GetSectionIndex(TargetingEndSection);
+			if (SectionIndex != INDEX_NONE)
+			{
+				Duration = CastingMontage->GetSectionLength(SectionIndex);
+			}
+			
+			UAbilityTask_WaitDelay* Task = UAbilityTask_WaitDelay::WaitDelay(this, Duration);
+			Task->OnFinish.AddDynamic(this, &UAbility_Spike::OnEndAnimationFinished);
+			Task->ReadyForActivation();
+		}
+		else
+		{
+			EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
+		}
 	}
 
 void UAbility_Spike::OnTargetDataCancelled(const FGameplayAbilityTargetDataHandle& Data)
 {
-	EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, true);
+	if (CastingMontage)
+	{
+		if (UAnimInstance* AnimInstance = GetCurrentActorInfo()->GetAnimInstance())
+		{
+			AnimInstance->Montage_JumpToSection(TargetingEndSection, CastingMontage);
+		}
+		
+		float Duration = 0.5f;
+		int32 SectionIndex = CastingMontage->GetSectionIndex(TargetingEndSection);
+		if (SectionIndex != INDEX_NONE)
+		{
+			Duration = CastingMontage->GetSectionLength(SectionIndex);
+		}
+		
+		UAbilityTask_WaitDelay* Task = UAbilityTask_WaitDelay::WaitDelay(this, Duration);
+		Task->OnFinish.AddDynamic(this, &UAbility_Spike::OnEndAnimationFinished);
+		Task->ReadyForActivation();
+	}
+	else
+	{
+		EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, true);
+	}
+}
+
+void UAbility_Spike::OnEndAnimationFinished()
+{
+	EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
+}
+
+void UAbility_Spike::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled)
+{
+	if (CastingMontage)
+	{
+		if (UAnimInstance* AnimInstance = GetCurrentActorInfo()->GetAnimInstance())
+		{
+			AnimInstance->Montage_Stop(0.25f, CastingMontage);
+		}
+	}
+	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
 }

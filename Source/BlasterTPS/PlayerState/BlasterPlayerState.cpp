@@ -207,6 +207,66 @@ void ABlasterPlayerState::SetMaxShield(float NewMaxShield)
 	}
 }
 
+float ABlasterPlayerState::GetMana() const
+{
+	if (const ABlasterCharacter* Char = Cast<ABlasterCharacter>(GetPawn()))
+	{
+		if (Char->GetAttributeSet()) return Char->GetAttributeSet()->Mana.GetCurrentValue();
+	}
+	if (AttributeSet) return AttributeSet->Mana.GetCurrentValue();
+	return 0.f;
+}
+
+float ABlasterPlayerState::GetMaxMana() const
+{
+	if (const ABlasterCharacter* Char = Cast<ABlasterCharacter>(GetPawn()))
+	{
+		if (Char->GetAttributeSet()) return Char->GetAttributeSet()->MaxMana.GetCurrentValue();
+	}
+	if (AttributeSet) return AttributeSet->MaxMana.GetCurrentValue();
+	return 0.f;
+}
+
+void ABlasterPlayerState::SetMana(float NewMana)
+{
+	if (ABlasterCharacter* Char = Cast<ABlasterCharacter>(GetPawn()))
+	{
+		if (Char->GetAttributeSet())
+		{
+			Char->GetAttributeSet()->Mana.SetCurrentValue(NewMana);
+			return;
+		}
+	}
+	if (AttributeSet)
+	{
+		AttributeSet->Mana.SetCurrentValue(NewMana);
+	}
+}
+
+void ABlasterPlayerState::SetMaxMana(float NewMaxMana)
+{
+	if (ABlasterCharacter* Char = Cast<ABlasterCharacter>(GetPawn()))
+	{
+		if (Char->GetAttributeSet())
+		{
+			Char->GetAttributeSet()->MaxMana.SetCurrentValue(NewMaxMana);
+			if (Char->GetAttributeSet()->Mana.GetCurrentValue() > NewMaxMana)
+			{
+				Char->GetAttributeSet()->Mana.SetCurrentValue(NewMaxMana);
+			}
+			return;
+		}
+	}
+	if (AttributeSet)
+	{
+		AttributeSet->MaxMana.SetCurrentValue(NewMaxMana);
+		if (AttributeSet->Mana.GetCurrentValue() > NewMaxMana)
+		{
+			AttributeSet->Mana.SetCurrentValue(NewMaxMana);
+		}
+	}
+}
+
 void ABlasterPlayerState::InitializeAttributes(TSubclassOf<UGameplayEffect> DefaultAttributeEffect)
 {
 	if (bAttributesInitialized) return;

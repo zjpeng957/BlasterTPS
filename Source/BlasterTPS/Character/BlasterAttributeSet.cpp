@@ -18,6 +18,8 @@ UBlasterAttributeSet::UBlasterAttributeSet()
 	MaxHealth = 100.f;
 	Shield = 100.f;
 	MaxShield = 100.f;
+	Mana = 100.f;
+	MaxMana = 100.f;
 	MoveSpeed = 600.f; // default Unreal walk speed
 	JumpVelocity = 600.f; // default Unreal jump velocity
 }
@@ -42,6 +44,13 @@ void UBlasterAttributeSet::PreAttributeChange(const FGameplayAttribute& Attribut
 			Shield.SetCurrentValue(FMath::Clamp(Shield.GetCurrentValue(), 0.f, NewValue));
 		}
 	}
+	if (Attribute == GetMaxManaAttribute())
+	{
+		if (Mana.GetCurrentValue() > NewValue)
+		{
+			Mana.SetCurrentValue(FMath::Clamp(Mana.GetCurrentValue(), 0.f, NewValue));
+		}
+	}
 	
 	// If MoveSpeed or JumpVelocity changes, we might want to apply to CharacterMovement. This cannot be done here because we need an Actor context in OnRep or via listeners.
 }
@@ -64,6 +73,16 @@ void UBlasterAttributeSet::OnRep_Shield(const FGameplayAttributeData& OldShield)
 void UBlasterAttributeSet::OnRep_MaxShield(const FGameplayAttributeData& OldMaxShield)
 {
 	GAMEPLAYATTRIBUTE_REPNOTIFY(UBlasterAttributeSet, MaxShield, OldMaxShield);
+}
+
+void UBlasterAttributeSet::OnRep_Mana(const FGameplayAttributeData& OldMana)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UBlasterAttributeSet, Mana, OldMana);
+}
+
+void UBlasterAttributeSet::OnRep_MaxMana(const FGameplayAttributeData& OldMaxMana)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UBlasterAttributeSet, MaxMana, OldMaxMana);
 }
 
 void UBlasterAttributeSet::OnRep_MoveSpeed(const FGameplayAttributeData& OldMoveSpeed)
@@ -106,6 +125,8 @@ void UBlasterAttributeSet::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>&
 	DOREPLIFETIME_CONDITION_NOTIFY(UBlasterAttributeSet, MaxHealth, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UBlasterAttributeSet, Shield, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UBlasterAttributeSet, MaxShield, COND_None, REPNOTIFY_Always);
+	DOREPLIFETIME_CONDITION_NOTIFY(UBlasterAttributeSet, Mana, COND_None, REPNOTIFY_Always);
+	DOREPLIFETIME_CONDITION_NOTIFY(UBlasterAttributeSet, MaxMana, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UBlasterAttributeSet, MoveSpeed, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UBlasterAttributeSet, JumpVelocity, COND_None, REPNOTIFY_Always);
 }
@@ -181,7 +202,13 @@ void UBlasterAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCal
 				GM->PlayerEliminated(TargetCharacter, TargetPC, AttackerPC);
 			}
 		}
-			
-		
+	}
+	else if (Data.EvaluatedData.Attribute == GetShieldAttribute())
+	{
+		SetShield(FMath::Clamp(GetShield(), 0.f, GetMaxShield()));
+	}
+	else if (Data.EvaluatedData.Attribute == GetManaAttribute())
+	{
+		SetMana(FMath::Clamp(GetMana(), 0.f, GetMaxMana()));
 	}
 }

@@ -1063,6 +1063,15 @@ void ABlasterCharacter::UpdateHUDAmmo()
 	}
 }
 
+void ABlasterCharacter::UpdateHUDMana()
+{
+	BlasterPlayerController = BlasterPlayerController == nullptr ? Cast<ABlasterPlayerController>(Controller) : BlasterPlayerController;
+	if (BlasterPlayerController)
+	{
+		BlasterPlayerController->SetHUDMana(GetMana(), GetMaxMana());
+	}
+}
+
 void ABlasterCharacter::SpawnDefaultWeapon() const
 {
 	ABlasterGameMode* BlasterGameMode = Cast<ABlasterGameMode>(UGameplayStatics::GetGameMode(this));
@@ -1195,6 +1204,8 @@ void ABlasterCharacter::InitializeAbilitySystem()
 			MaxShieldChangedDelegateHandle = ASC->GetGameplayAttributeValueChangeDelegate(UBlasterAttributeSet::GetMaxShieldAttribute()).AddUObject(this, &ABlasterCharacter::OnMaxShieldChanged);
 			MoveSpeedChangedDelegateHandle = ASC->GetGameplayAttributeValueChangeDelegate(UBlasterAttributeSet::GetMoveSpeedAttribute()).AddUObject(this, &ABlasterCharacter::OnMoveSpeedChanged);
 			JumpVelocityChangedDelegateHandle = ASC->GetGameplayAttributeValueChangeDelegate(UBlasterAttributeSet::GetJumpVelocityAttribute()).AddUObject(this, &ABlasterCharacter::OnJumpVelocityChanged);
+			ManaChangedDelegateHandle = ASC->GetGameplayAttributeValueChangeDelegate(UBlasterAttributeSet::GetManaAttribute()).AddUObject(this, &ABlasterCharacter::OnManaChanged);
+			MaxManaChangedDelegateHandle = ASC->GetGameplayAttributeValueChangeDelegate(UBlasterAttributeSet::GetMaxManaAttribute()).AddUObject(this, &ABlasterCharacter::OnMaxManaChanged);
 
 			// Initialize cached values
 			LastHealth = GetHealth();
@@ -1255,6 +1266,16 @@ void ABlasterCharacter::OnShieldChanged(const FOnAttributeChangeData& Data)
 void ABlasterCharacter::OnMaxShieldChanged(const FOnAttributeChangeData& Data)
 {
 	UpdateHUDShield();
+}
+
+void ABlasterCharacter::OnManaChanged(const FOnAttributeChangeData& Data)
+{
+	UpdateHUDMana();
+}
+
+void ABlasterCharacter::OnMaxManaChanged(const FOnAttributeChangeData& Data)
+{
+	UpdateHUDMana();
 }
 
 void ABlasterCharacter::AddTargetingMappingContext()

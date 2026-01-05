@@ -50,4 +50,10 @@ public:
 
 	UPROPERTY(meta = (BindWidgetANim), Transient)
 	class UWidgetAnimation* HighPingAnimation;
+
+	UPROPERTY(meta = (BindWidget))
+	class UProgressBar* ManaBar;
+
+	UPROPERTY(meta = (BindWidget))
+	class UTextBlock* ManaText;
 };

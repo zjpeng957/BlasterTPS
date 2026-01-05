@@ -56,6 +56,18 @@ public:
 	UFUNCTION()
 	void SetMaxShield(float NewMaxShield);
 
+	UFUNCTION()
+	float GetMana() const;
+
+	UFUNCTION()
+	float GetMaxMana() const;
+
+	UFUNCTION()
+	void SetMana(float NewMana);
+
+	UFUNCTION()
+	void SetMaxMana(float NewMaxMana);
+
 	// Initialize attributes via a GameplayEffect (call once on server when ASC initialized)
 	void InitializeAttributes(TSubclassOf<UGameplayEffect> DefaultAttributeEffect);
 

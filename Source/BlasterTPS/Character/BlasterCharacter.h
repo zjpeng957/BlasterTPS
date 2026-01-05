@@ -42,6 +42,8 @@ public:
 	void OnMaxShieldChanged(const FOnAttributeChangeData& Data);
 	void OnMoveSpeedChanged(const FOnAttributeChangeData& Data);
 	void OnJumpVelocityChanged(const FOnAttributeChangeData& Data);
+	void OnManaChanged(const FOnAttributeChangeData& Data);
+	void OnMaxManaChanged(const FOnAttributeChangeData& Data);
 
 	UPROPERTY(Replicated)
 	bool bDisableGameplay = false;
@@ -150,6 +152,7 @@ public:
 	void UpdateHUDHealth();
 	void UpdateHUDShield();
 	void UpdateHUDAmmo();
+	void UpdateHUDMana();
 	void SpawnDefaultWeapon() const;
 
 	FORCEINLINE float GetAOYaw() const { return AO_Yaw; }
@@ -165,6 +168,9 @@ public:
 	FORCEINLINE float GetShield() const { if (const ABlasterPlayerState* PS = GetPlayerState<ABlasterPlayerState>()) return PS->GetShield(); return 0.f; }
 	FORCEINLINE void SetShield(float Amount) { if (ABlasterPlayerState* PS = GetPlayerState<ABlasterPlayerState>()) PS->SetShield(Amount); }
 	FORCEINLINE float GetMaxShield() const { if (const ABlasterPlayerState* PS = GetPlayerState<ABlasterPlayerState>()) return PS->GetMaxShield(); return 0.f; }
+	FORCEINLINE float GetMana() const { if (const ABlasterPlayerState* PS = GetPlayerState<ABlasterPlayerState>()) return PS->GetMana(); return 0.f; }
+	FORCEINLINE void SetMana(float Amount) { if (ABlasterPlayerState* PS = GetPlayerState<ABlasterPlayerState>()) PS->SetMana(Amount); }
+	FORCEINLINE float GetMaxMana() const { if (const ABlasterPlayerState* PS = GetPlayerState<ABlasterPlayerState>()) return PS->GetMaxMana(); return 0.f; }
 	FORCEINLINE UCombatComponent* GetCombat() const { return Combat; }
 	FORCEINLINE UBuffComponent* GetBuff() const { return Buff; }
 	FORCEINLINE ULagCompensationComponent* GetLagCompensation() const { return LagCompensation; }
@@ -259,6 +265,8 @@ protected:
 	FDelegateHandle MaxShieldChangedDelegateHandle;
 	FDelegateHandle MoveSpeedChangedDelegateHandle;
 	FDelegateHandle JumpVelocityChangedDelegateHandle;
+	FDelegateHandle ManaChangedDelegateHandle;
+	FDelegateHandle MaxManaChangedDelegateHandle;
 
 	bool ActivateAbilityByTag(const FGameplayTag& AbilityTag) const;
 

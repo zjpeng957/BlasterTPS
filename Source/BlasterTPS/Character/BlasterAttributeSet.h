@@ -41,6 +41,16 @@ public:
 	FGameplayAttributeData MaxShield;
 	ATTRIBUTE_ACCESSORS(UBlasterAttributeSet, MaxShield)
 
+	// Mana
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, ReplicatedUsing = OnRep_Mana, Category = "Attributes")
+	FGameplayAttributeData Mana;
+	ATTRIBUTE_ACCESSORS(UBlasterAttributeSet, Mana)
+
+	// Max Mana
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, ReplicatedUsing = OnRep_MaxMana, Category = "Attributes")
+	FGameplayAttributeData MaxMana;
+	ATTRIBUTE_ACCESSORS(UBlasterAttributeSet, MaxMana)
+
 	// Movement speed (MaxWalkSpeed)
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, ReplicatedUsing = OnRep_MoveSpeed, Category = "Attributes")
 	FGameplayAttributeData MoveSpeed;
@@ -66,6 +76,12 @@ public:
 
 	UFUNCTION()
 	virtual void OnRep_MaxShield(const FGameplayAttributeData& OldMaxShield);
+
+	UFUNCTION()
+	virtual void OnRep_Mana(const FGameplayAttributeData& OldMana);
+
+	UFUNCTION()
+	virtual void OnRep_MaxMana(const FGameplayAttributeData& OldMaxMana);
 
 	UFUNCTION()
 	virtual void OnRep_MoveSpeed(const FGameplayAttributeData& OldMoveSpeed);
