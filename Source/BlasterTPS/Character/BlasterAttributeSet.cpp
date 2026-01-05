@@ -68,6 +68,7 @@ void UBlasterAttributeSet::OnRep_MaxHealth(const FGameplayAttributeData& OldMaxH
 void UBlasterAttributeSet::OnRep_Shield(const FGameplayAttributeData& OldShield)
 {
 	GAMEPLAYATTRIBUTE_REPNOTIFY(UBlasterAttributeSet, Shield, OldShield);
+	UE_LOG(LogTemp, Warning, TEXT("OnRep_Shield called. New Value: %.1f. ASC: %s"), Shield.GetCurrentValue(), GetOwningAbilitySystemComponent() ? *GetOwningAbilitySystemComponent()->GetName() : TEXT("NULL"));
 }
 
 void UBlasterAttributeSet::OnRep_MaxShield(const FGameplayAttributeData& OldMaxShield)
@@ -137,9 +138,6 @@ void UBlasterAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCal
 
 	FGameplayEffectContextHandle Context = Data.EffectSpec.GetContext();
 	UAbilitySystemComponent* Source = Context.GetOriginalInstigatorAbilitySystemComponent();
-	const FGameplayTagContainer& SourceTags = *Data.EffectSpec.CapturedSourceTags.GetAggregatedTags();
-	FGameplayTagContainer SpecAssetTags;
-	Data.EffectSpec.GetAllAssetTags(SpecAssetTags);
 
 	// Get the Target actor, which should be our owner
 	AActor* TargetActor = nullptr;
@@ -155,7 +153,7 @@ void UBlasterAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCal
 	// Get the Source actor
 	AActor* SourceActor = nullptr;
 	AController* SourceController = nullptr;
-	ABlasterCharacter* SourceCharacter = nullptr;
+	//ABlasterCharacter* SourceCharacter = nullptr;
 	if (Source && Source->AbilityActorInfo.IsValid() && Source->AbilityActorInfo->AvatarActor.IsValid())
 	{
 		SourceActor = Source->AbilityActorInfo->AvatarActor.Get();
@@ -171,11 +169,11 @@ void UBlasterAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCal
 		// Use the controller to find the source pawn
 		if (SourceController)
 		{
-			SourceCharacter = Cast<ABlasterCharacter>(SourceController->GetPawn());
+			//SourceCharacter = Cast<ABlasterCharacter>(SourceController->GetPawn());
 		}
 		else
 		{
-			SourceCharacter = Cast<ABlasterCharacter>(SourceActor);
+			//SourceCharacter = Cast<ABlasterCharacter>(SourceActor);
 		}
 
 		// Set the causer actor based on context if it's set
@@ -210,5 +208,35 @@ void UBlasterAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCal
 	else if (Data.EvaluatedData.Attribute == GetManaAttribute())
 	{
 		SetMana(FMath::Clamp(GetMana(), 0.f, GetMaxMana()));
+	}
+	else if (Data.EvaluatedData.Attribute == GetIncomingDamageAttribute())
+	{
+		const float LocalIncomingDamage = GetIncomingDamage();
+		SetIncomingDamage(0.f);
+		if (LocalIncomingDamage > 0.f)
+		{
+			// This logic is now handled by ExecutionCalculation, but if we have direct modifiers to IncomingDamage
+			// that are NOT handled by ExecutionCalculation (e.g. simple GEs), we might want to apply them here.
+			// However, ExecutionCalculation runs BEFORE PostGameplayEffectExecute and it modifies Health/Shield directly.
+			// So if IncomingDamage is modified by a GE that uses the ExecutionCalculation, the ExecutionCalculation
+			// will have already consumed the value (from the spec) and applied changes to Health/Shield.
+			// But wait, ExecutionCalculation captures attributes. If IncomingDamage is a backing attribute,
+			// does the GE modify it first?
+			// Yes, if the GE has a modifier for IncomingDamage, that modifier is applied.
+			// BUT ExecutionCalculation is usually used to REPLACE the standard application logic for specific attributes?
+			// No, ExecutionCalculation is an additional step.
+			
+			// If the GE has a modifier for IncomingDamage, and also has an ExecutionCalculation that captures IncomingDamage.
+			// The ExecutionCalculation runs. It reads the value of IncomingDamage (which includes the modifier).
+			// It then outputs modifiers for Health/Shield.
+			// Then the GE's modifiers are applied. So IncomingDamage is modified on the AttributeSet.
+			// So here in PostGameplayEffectExecute, IncomingDamage will have a value.
+			// We should just consume it (reset to 0) because the damage has already been applied to Health/Shield by the ExecutionCalculation.
+			
+			// Wait, if the GE *only* modifies IncomingDamage and relies on PostGameplayEffectExecute to apply damage,
+			// then we would do the logic here.
+			// But we are using ExecutionCalculation.
+			// So we just need to reset it.
+		}
 	}
 }

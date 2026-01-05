@@ -61,6 +61,11 @@ public:
 	FGameplayAttributeData JumpVelocity;
 	ATTRIBUTE_ACCESSORS(UBlasterAttributeSet, JumpVelocity)
 
+	// Meta Attribute for Damage
+	UPROPERTY(BlueprintReadOnly, Category = "Attributes")
+	FGameplayAttributeData IncomingDamage;
+	ATTRIBUTE_ACCESSORS(UBlasterAttributeSet, IncomingDamage)
+
 	// UAttributeSet overrides
 	virtual void PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue) override;
 	virtual void PostGameplayEffectExecute(const FGameplayEffectModCallbackData& Data) override;

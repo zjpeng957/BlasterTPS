@@ -283,8 +283,6 @@ public:
 
 	void PlayFireMontage(bool bAiming);
 
-	void PlayHitReactMontage();
-
 	void PlayElimMontage();
 
 	void PlayReloadMontage();
@@ -347,8 +345,6 @@ private:
 	UPROPERTY(EditAnywhere, Category=Combat)
 	class UAnimMontage* FireWeaponMontage;
 
-	UPROPERTY(EditAnywhere, Category = Combat)
-	UAnimMontage* HitReactMontage;
 
 	UPROPERTY(EditAnywhere, Category = Combat)
 	UAnimMontage* ElimMontage;

@@ -441,30 +441,6 @@ void ABlasterCharacter::PlayFireMontage(bool bAiming)
 	}
 }
 
-void ABlasterCharacter::PlayHitReactMontage()
-{
-	// Try to activate HitReact ability via GAS first
-	if (AbilitySystemComponent)
-	{
-		if (ActivateAbilityByTag(BlasterGameplayTags::Abilities::HitReact))
-		{
-			UE_LOG(LogTemp, Warning, TEXT("Activated HitReact ability via GAS"));
-			return;
-		}
-	}
-
-	// Fallback: play montage directly (for non-GAS setups)
-	if (Combat == nullptr || Combat->EquippedWeapon == nullptr) return;
-	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
-	if (AnimInstance && HitReactMontage)
-	{
-		AnimInstance->Montage_Play(HitReactMontage);
-		FName SectionName("FromFront");
-		AnimInstance->Montage_JumpToSection(SectionName);
-		UE_LOG(LogTemp, Warning, TEXT("play hit react fallback"));
-	}
-}
-
 void ABlasterCharacter::PlayElimMontage()
 {
 	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
@@ -847,68 +823,44 @@ void ABlasterCharacter::ReceiveDamage(AActor* DamagedActor, float Damage, const 
 	// If we have an AbilitySystemComponent and GameplayEffects configured, prefer applying damage via ASC
 	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponent())
 	{
-		// Apply to shield first if shield exists
-		float CurrentShield = GetShield();
-		float DamageToHealth = Damage;
-
-		if (CurrentShield > 0.f)
+		// Use DamageGameplayEffect which should be configured with BlasterDamageExecutionCalc
+		if (DamageGameplayEffect)
 		{
-			float ShieldDamage = FMath::Min(CurrentShield, Damage);
-			DamageToHealth = Damage - ShieldDamage;
-
-			// Apply shield damage via GameplayEffect if configured
-			if (ShieldGameplayEffect)
+			FGameplayEffectContextHandle EffectContext = ASC->MakeEffectContext();
+			EffectContext.AddSourceObject(DamageCauser ? DamageCauser : this);
+			FGameplayEffectSpecHandle SpecHandle = ASC->MakeOutgoingSpec(DamageGameplayEffect, 1.f, EffectContext);
+			if (SpecHandle.IsValid())
 			{
-				FGameplayEffectContextHandle EffectContext = ASC->MakeEffectContext();
-				EffectContext.AddSourceObject(DamageCauser ? DamageCauser : this);
-				FGameplayEffectSpecHandle SpecHandle = ASC->MakeOutgoingSpec(ShieldGameplayEffect, 1.f, EffectContext);
-				if (SpecHandle.IsValid())
-				{
-					// Expect GE to have a negative modifier to Shield or otherwise use SetByCaller value
-					SpecHandle.Data->SetSetByCallerMagnitude(BlasterGameplayTags::SetByCaller::Damage, -ShieldDamage);
-					ASC->ApplyGameplayEffectSpecToTarget(*SpecHandle.Data.Get(), ASC);
-					UE_LOG(LogTemp, Warning, TEXT("Apply shield damage via GE: %.1f"), ShieldDamage);
-				}
-			}
-			else
-			{
-				// Fallback: directly modify attribute on server
-				if (HasAuthority())
-				{
-					SetShield(FMath::Clamp(CurrentShield - ShieldDamage, 0.f, GetMaxShield()));
-				}
+				// Pass the full damage amount. The ExecutionCalculation will handle splitting between Shield and Health.
+				// We pass it as a negative value because we want to reduce attributes, but our logic in ExecutionCalc handles sign.
+				// Let's pass it as negative to be consistent with "Damage" usually being a reduction if applied directly,
+				// but here it's a magnitude.
+				// In BlasterDamageExecutionCalc, we check if it's negative and flip it to positive for calculation, then apply negative modifiers.
+				SpecHandle.Data->SetSetByCallerMagnitude(BlasterGameplayTags::SetByCaller::Damage, -Damage);
+				ASC->ApplyGameplayEffectSpecToTarget(*SpecHandle.Data.Get(), ASC);
 			}
 		}
-
-		// Apply health damage via GameplayEffect if configured
-		if (DamageToHealth > 0.f)
+		else
 		{
-			if (DamageGameplayEffect)
+			// Fallback if no GE is set
+			float DamageToHealth = Damage;
+			if (GetShield() > 0.f)
 			{
-				FGameplayEffectContextHandle EffectContext = ASC->MakeEffectContext();
-				EffectContext.AddSourceObject(DamageCauser ? DamageCauser : this);
-				FGameplayEffectSpecHandle SpecHandle = ASC->MakeOutgoingSpec(DamageGameplayEffect, 1.f, EffectContext);
-				if (SpecHandle.IsValid())
+				if (GetShield() >= Damage)
 				{
-					SpecHandle.Data->SetSetByCallerMagnitude(BlasterGameplayTags::SetByCaller::Damage, -DamageToHealth);
-					ASC->ApplyGameplayEffectSpecToTarget(*SpecHandle.Data.Get(), ASC);
+					SetShield(FMath::Clamp(GetShield() - Damage, 0.f, GetMaxShield()));
+					DamageToHealth = 0.f;
+				}
+				else
+				{
+					DamageToHealth = FMath::Clamp(Damage - GetShield(), 0.f, Damage);
+					SetShield(0.f);
 				}
 			}
-			else
-			{
-				// Fallback: directly modify attribute on server
-				if (HasAuthority())
-				{
-					float NewHealth = FMath::Clamp(GetHealth() - DamageToHealth, 0.f, GetMaxHealth());
-					SetHealth(NewHealth);
-				}
-			}
-		}
 
-		// Note: HUD updates, Hit React, and Elimination are now handled by:
-		// 1. OnHealthChanged/OnShieldChanged delegates (HUD, Hit React)
-		// 2. BlasterAttributeSet::PostGameplayEffectExecute (Elimination)
-		
+			float NewHealth = FMath::Clamp(GetHealth() - DamageToHealth, 0.f, GetMaxHealth());
+			SetHealth(NewHealth);
+		}
 		return;
 	}
 
@@ -933,22 +885,36 @@ void ABlasterCharacter::ReceiveDamage(AActor* DamagedActor, float Damage, const 
 
 	UpdateHUDShield();
 	UpdateHUDHealth();
-	PlayHitReactMontage();
-
-	if (FMath::IsNearlyZero(GetHealth()))
+	//PlayHitReactMontage();
+	// If we are here, it means we didn't use GAS to apply damage (fallback path).
+	// Since we removed PlayHitReactMontage, we should manually trigger it here if we want visual feedback for non-GAS damage.
+	// However, since we are moving towards full GAS, we can rely on OnHealthChanged/OnShieldChanged which are triggered by SetHealth/SetShield?
+	// NO. SetHealth/SetShield on AttributeSet (via direct setter) does NOT trigger ASC's AttributeChangeDelegate unless it goes through the ASC modification pipeline?
+	// Actually, SetHealth calls GAMEPLAYATTRIBUTE_REPNOTIFY which handles replication.
+	// But local modification via setter:
+	// If we call SetHealth on the character, it calls PS->SetHealth.
+	// PS->SetHealth calls AttributeSet->SetHealth.
+	// AttributeSet->SetHealth just sets the value. It does NOT broadcast the ASC delegate.
+	// The ASC delegate is broadcast when the attribute value is modified via the ASC (e.g. GE).
+	// So for this fallback path, OnHealthChanged will NOT be called automatically by the ASC delegate!
+	// We must manually trigger the visual effect here if we want it.
+	
+	// For now, let's manually activate the ability if we have ASC, or play montage directly if not.
+	if (AbilitySystemComponent)
 	{
-		if (ABlasterGameMode* BlasterGameMode = GetWorld()->GetAuthGameMode<ABlasterGameMode>())
-		{
-			UE_LOG(LogTemp, Warning, TEXT("player elim"));
-			BlasterPlayerController = BlasterPlayerController == nullptr ? Cast<ABlasterPlayerController>(Controller) : BlasterPlayerController;
-			ABlasterPlayerController* AttackerController = Cast<ABlasterPlayerController>(InstigatedBy);
-			BlasterGameMode->PlayerEliminated(this, BlasterPlayerController, AttackerController);
-		}
-		else
-		{
-			UE_LOG(LogTemp, Warning, TEXT("player elim no gamemode"));
-		}
+		ActivateAbilityByTag(BlasterGameplayTags::Abilities::HitReact);
 	}
+	// else
+	// {
+	// 	// Fallback for no ASC (shouldn't happen in this setup but good for safety)
+	// 	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	// 	if (AnimInstance && HitReactMontage)
+	// 	{
+	// 		AnimInstance->Montage_Play(HitReactMontage);
+	// 		FName SectionName("FromFront");
+	// 		AnimInstance->Montage_JumpToSection(SectionName);
+	// 	}
+	// }
 }
 
 void ABlasterCharacter::PollInit()
@@ -1182,11 +1148,16 @@ void ABlasterCharacter::OnRep_PlayerState()
 		UpdateHUDShield();
 		UpdateHUDAmmo();
 	}
+	UE_LOG(LogTemp, Warning, TEXT("OnRep_PlayerState called for %s"), *GetName());
 }
 
 void ABlasterCharacter::InitializeAbilitySystem()
 {
-	if (AbilitySystemComponent) return; // ensure not re-init
+	if (AbilitySystemComponent)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("InitializeAbilitySystem: AbilitySystemComponent already exists for %s"), *GetName());
+		return; // ensure not re-init
+	}
 
 	if (ABlasterPlayerState* BPS = GetPlayerState<ABlasterPlayerState>())
 	{
@@ -1196,6 +1167,7 @@ void ABlasterCharacter::InitializeAbilitySystem()
 			ASC->InitAbilityActorInfo(BPS, this);
 			// Cache pointer locally
 			AbilitySystemComponent = ASC;
+			UE_LOG(LogTemp, Warning, TEXT("InitializeAbilitySystem: ASC found and cached for %s. ASC: %s"), *GetName(), *ASC->GetName());
 
 			// Subscribe to attribute change delegates on ASC
 			HealthChangedDelegateHandle = ASC->GetGameplayAttributeValueChangeDelegate(UBlasterAttributeSet::GetHealthAttribute()).AddUObject(this, &ABlasterCharacter::OnHealthChanged);
@@ -1210,7 +1182,17 @@ void ABlasterCharacter::InitializeAbilitySystem()
 			// Initialize cached values
 			LastHealth = GetHealth();
 			LastShield = GetShield();
+			
+			UE_LOG(LogTemp, Warning, TEXT("InitializeAbilitySystem success for %s. LastShield: %.1f"), *GetName(), LastShield);
 		}
+		else
+		{
+			UE_LOG(LogTemp, Error, TEXT("InitializeAbilitySystem: ASC is null in PlayerState for %s"), *GetName());
+		}
+	}
+	else
+	{
+		UE_LOG(LogTemp, Error, TEXT("InitializeAbilitySystem: PlayerState is null for %s"), *GetName());
 	}
 }
 
@@ -1242,7 +1224,7 @@ void ABlasterCharacter::OnHealthChanged(const FOnAttributeChangeData& Data)
 	// Play hit react if decreased
 	if (NewHealth < LastHealth)
 	{
-		PlayHitReactMontage();
+		ActivateAbilityByTag(BlasterGameplayTags::Abilities::HitReact);
 	}
 	LastHealth = NewHealth;
 }
@@ -1255,10 +1237,11 @@ void ABlasterCharacter::OnMaxHealthChanged(const FOnAttributeChangeData& Data)
 void ABlasterCharacter::OnShieldChanged(const FOnAttributeChangeData& Data)
 {
 	float NewShield = Data.NewValue;
+	UE_LOG(LogTemp, Warning, TEXT("OnShieldChanged for %s. NewShield: %.1f, LastShield: %.1f"), *GetName(), NewShield, LastShield);
 	UpdateHUDShield();
 	if (NewShield < LastShield)
 	{
-		PlayHitReactMontage();
+		ActivateAbilityByTag(BlasterGameplayTags::Abilities::HitReact);
 	}
 	LastShield = NewShield;
 }
@@ -1305,4 +1288,6 @@ void ABlasterCharacter::RemoveTargetingMappingContext()
 		}
 	}
 }
+
+
 
