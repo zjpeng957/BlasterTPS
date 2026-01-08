@@ -803,6 +803,20 @@ void ABlasterCharacter::PrimaryButtonPressed(const FInputActionValue& Value)
 
 void ABlasterCharacter::UltimateButtonPressed(const FInputActionValue& Value)
 {
+	if (GetAbilitySystemComponent())
+	{
+		if (GetAbilitySystemComponent()->HasMatchingGameplayTag(BlasterGameplayTags::State::Tethering))
+		{
+			// Send explode event
+			FGameplayEventData EventData;
+			EventData.EventTag = BlasterGameplayTags::Input::TetherSecPress;
+			UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(this, BlasterGameplayTags::Input::TetherSecPress, EventData);
+		}
+		else
+		{
+			ActivateAbilityByTag(BlasterGameplayTags::Abilities::GravityTether);
+		}
+	}
 }
 
 bool ABlasterCharacter::IsWeaponEquipped()
@@ -1253,6 +1267,14 @@ void ABlasterCharacter::RemoveTargetingMappingContext()
 		}
 	}
 }
+
+
+
+
+
+
+
+
 
 
 

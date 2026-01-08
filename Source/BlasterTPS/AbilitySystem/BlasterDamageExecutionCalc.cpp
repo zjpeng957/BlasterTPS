@@ -36,26 +36,8 @@ UBlasterDamageExecutionCalc::UBlasterDamageExecutionCalc()
 	RelevantAttributesToCapture.Add(DamageStatics().IncomingDamageDef);
 }
 
-void UBlasterDamageExecutionCalc::Execute_Implementation(const FGameplayEffectCustomExecutionParameters& ExecutionParams, FGameplayEffectCustomExecutionOutput& OutExecutionOutput) const
+float UBlasterDamageExecutionCalc::CalculateBaseDamage(const FGameplayEffectCustomExecutionParameters& ExecutionParams, const FGameplayEffectSpec& Spec, const FGameplayTagContainer* TargetTags, FAggregatorEvaluateParameters EvaluationParameters) const
 {
-	const FGameplayEffectSpec& Spec = ExecutionParams.GetOwningSpec();
-
-	// Gather tags from source and target
-	const FGameplayTagContainer* SourceTags = Spec.CapturedSourceTags.GetAggregatedTags();
-	const FGameplayTagContainer* TargetTags = Spec.CapturedTargetTags.GetAggregatedTags();
-
-	FAggregatorEvaluateParameters EvaluationParameters;
-	EvaluationParameters.SourceTags = SourceTags;
-	EvaluationParameters.TargetTags = TargetTags;
-
-	float CurrentShield = 0.f;
-	ExecutionParams.AttemptCalculateCapturedAttributeMagnitude(DamageStatics().ShieldDef, EvaluationParameters, CurrentShield);
-	CurrentShield = FMath::Max<float>(CurrentShield, 0.0f);
-
-	float CurrentHealth = 0.f;
-	ExecutionParams.AttemptCalculateCapturedAttributeMagnitude(DamageStatics().HealthDef, EvaluationParameters, CurrentHealth);
-	CurrentHealth = FMath::Max<float>(CurrentHealth, 0.0f);
-
 	// Get Damage SetByCaller Magnitude
 	float Damage = 0.f;
 	// Assuming damage is passed via SetByCaller with the tag Data.Damage
@@ -86,6 +68,18 @@ void UBlasterDamageExecutionCalc::Execute_Implementation(const FGameplayEffectCu
 	{
 		DamageToApply = 0.f;
 	}
+	return DamageToApply;
+}
+
+void UBlasterDamageExecutionCalc::ApplyDamageToShieldAndHealth(const FGameplayEffectCustomExecutionParameters& ExecutionParams, FGameplayEffectCustomExecutionOutput& OutExecutionOutput, FAggregatorEvaluateParameters EvaluationParameters, float DamageToApply) const
+{
+	float CurrentShield = 0.f;
+	ExecutionParams.AttemptCalculateCapturedAttributeMagnitude(DamageStatics().ShieldDef, EvaluationParameters, CurrentShield);
+	CurrentShield = FMath::Max<float>(CurrentShield, 0.0f);
+
+	float CurrentHealth = 0.f;
+	ExecutionParams.AttemptCalculateCapturedAttributeMagnitude(DamageStatics().HealthDef, EvaluationParameters, CurrentHealth);
+	CurrentHealth = FMath::Max<float>(CurrentHealth, 0.0f);
 
 	float DamageDoneToShield = 0.f;
 	float DamageDoneToHealth = 0.f;
@@ -98,10 +92,6 @@ void UBlasterDamageExecutionCalc::Execute_Implementation(const FGameplayEffectCu
 	}
 
 	DamageDoneToHealth = DamageToApply;
-	
-	// Debug Log
-	UE_LOG(LogTemp, Warning, TEXT("BlasterDamageExec: Damage=%.1f, Incoming=%.1f, CurrentShield=%.1f, DamageToShield=%.1f, DamageToHealth=%.1f"), 
-		Damage, IncomingDamage, CurrentShield, DamageDoneToShield, DamageDoneToHealth);
 
 	if (DamageDoneToShield > 0.f)
 	{
@@ -112,4 +102,21 @@ void UBlasterDamageExecutionCalc::Execute_Implementation(const FGameplayEffectCu
 	{
 		OutExecutionOutput.AddOutputModifier(FGameplayModifierEvaluatedData(DamageStatics().HealthProperty, EGameplayModOp::Additive, -DamageDoneToHealth));
 	}
+}
+
+void UBlasterDamageExecutionCalc::Execute_Implementation(const FGameplayEffectCustomExecutionParameters& ExecutionParams, FGameplayEffectCustomExecutionOutput& OutExecutionOutput) const
+{
+	const FGameplayEffectSpec& Spec = ExecutionParams.GetOwningSpec();
+
+	// Gather tags from source and target
+	const FGameplayTagContainer* SourceTags = Spec.CapturedSourceTags.GetAggregatedTags();
+	const FGameplayTagContainer* TargetTags = Spec.CapturedTargetTags.GetAggregatedTags();
+
+	FAggregatorEvaluateParameters EvaluationParameters;
+	EvaluationParameters.SourceTags = SourceTags;
+	EvaluationParameters.TargetTags = TargetTags;
+
+	float DamageToApply = CalculateBaseDamage(ExecutionParams, Spec, TargetTags, EvaluationParameters);
+	
+	ApplyDamageToShieldAndHealth(ExecutionParams, OutExecutionOutput, EvaluationParameters, DamageToApply);
 }

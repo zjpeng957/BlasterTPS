@@ -11,11 +11,13 @@ namespace BlasterGameplayTags
 		UE_DECLARE_GAMEPLAY_TAG_EXTERN(Dash);
 		UE_DECLARE_GAMEPLAY_TAG_EXTERN(HitReact);
 		UE_DECLARE_GAMEPLAY_TAG_EXTERN(Spike);
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(GravityTether);
 	}
 	namespace SetByCaller
 	{
 		UE_DECLARE_GAMEPLAY_TAG_EXTERN(Damage);
 		UE_DECLARE_GAMEPLAY_TAG_EXTERN(Mana);
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TetheredCount);
 	}
 
 	namespace State
@@ -25,10 +27,20 @@ namespace BlasterGameplayTags
 		UE_DECLARE_GAMEPLAY_TAG_EXTERN(Invincible);
 		UE_DECLARE_GAMEPLAY_TAG_EXTERN(Burning);
 		UE_DECLARE_GAMEPLAY_TAG_EXTERN(Targeting);
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(Tethered);
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(Tethering);
+
 	}
 
 	namespace Cooldown
 	{
 		UE_DECLARE_GAMEPLAY_TAG_EXTERN(Dash);
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(Spike);
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(GravityTether);
+	}
+
+	namespace Input
+	{
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TetherSecPress);
 	}
 }
