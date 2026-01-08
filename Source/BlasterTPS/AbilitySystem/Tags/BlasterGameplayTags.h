@@ -12,6 +12,7 @@ namespace BlasterGameplayTags
 		UE_DECLARE_GAMEPLAY_TAG_EXTERN(HitReact);
 		UE_DECLARE_GAMEPLAY_TAG_EXTERN(Spike);
 		UE_DECLARE_GAMEPLAY_TAG_EXTERN(GravityTether);
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(MeleeSingle);
 	}
 	namespace SetByCaller
 	{
@@ -42,5 +43,10 @@ namespace BlasterGameplayTags
 	namespace Input
 	{
 		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TetherSecPress);
+	}
+
+	namespace Event
+	{
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(MeleeHit);
 	}
 }

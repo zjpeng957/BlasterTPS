@@ -5,6 +5,7 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "BlasterTPS/Weapon/Weapon.h"
+#include "BlasterTPS/Weapon/MeleeWeapon.h"
 #include "Camera/CameraComponent.h"
 #include "Components/WidgetComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -205,6 +206,21 @@ void ABlasterCharacter::BeginPlay()
 	if (HasAuthority())
 	{
 		OnTakeAnyDamage.AddDynamic(this, &ABlasterCharacter::ReceiveDamage);
+
+		// Spawn/attach melee weapon (server spawns so it can replicate to clients)
+		if (MeleeWeapon == nullptr && MeleeWeaponClass)
+		{
+			FActorSpawnParameters SpawnParams;
+			SpawnParams.Owner = this;
+			SpawnParams.Instigator = this;
+
+			MeleeWeapon = GetWorld()->SpawnActor<AMeleeWeapon>(MeleeWeaponClass, FTransform::Identity, SpawnParams);
+			if (MeleeWeapon)
+			{
+				MeleeWeapon->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetIncludingScale, FName("MeleeSocket"));
+				SwitchMeleeWeaponVisibility(false);
+			}
+		}
 	}
 	if (AttachedGrenade)
 	{
@@ -337,7 +353,8 @@ void ABlasterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 		EnhancedInputComponent->BindAction(DashAction, ETriggerEvent::Started, this, &ABlasterCharacter::DashButtonPressed);
 		EnhancedInputComponent->BindAction(PrimaryAction, ETriggerEvent::Started, this, &ABlasterCharacter::PrimaryButtonPressed);
 		EnhancedInputComponent->BindAction(UltimateAction, ETriggerEvent::Started, this, &ABlasterCharacter::UltimateButtonPressed);
-
+		EnhancedInputComponent->BindAction(MeleeAction, ETriggerEvent::Started, this, &ABlasterCharacter::MeleeButtonPressed);
+		
 		// GAS Confirm/Cancel
 		if (ConfirmAction)
 		{
@@ -405,6 +422,7 @@ void ABlasterCharacter::GetLifetimeReplicatedProps(TArray<class FLifetimePropert
 
 	DOREPLIFETIME_CONDITION(ABlasterCharacter, OverlappingWeapon, COND_OwnerOnly);
 	DOREPLIFETIME(ABlasterCharacter, bDisableGameplay);
+	DOREPLIFETIME(ABlasterCharacter, MeleeWeapon);
 }
 
 void ABlasterCharacter::PostInitializeComponents()
@@ -819,6 +837,14 @@ void ABlasterCharacter::UltimateButtonPressed(const FInputActionValue& Value)
 	}
 }
 
+void ABlasterCharacter::MeleeButtonPressed(const FInputActionValue& Value)
+{
+	if (GetAbilitySystemComponent())
+	{
+		ActivateAbilityByTag(BlasterGameplayTags::Abilities::MeleeSingle);
+	}
+}
+
 bool ABlasterCharacter::IsWeaponEquipped()
 {
 	return (Combat && Combat->EquippedWeapon);
@@ -1057,6 +1083,15 @@ void ABlasterCharacter::StartDissolve()
 	}
 }
 
+void ABlasterCharacter::SwitchMeleeWeaponVisibility(bool IsVisible)
+{
+	if (MeleeWeapon) MeleeWeapon->SetActorHiddenInGame(!IsVisible);
+	if (AWeapon* EquippedWeapon = GetEquippedWeapon())
+	{
+		EquippedWeapon->SetActorHiddenInGame(IsVisible);
+	}
+}
+
 void ABlasterCharacter::SetOverlappingWeapon(AWeapon* Weapon)
 {
 	if (OverlappingWeapon)
@@ -1267,6 +1302,9 @@ void ABlasterCharacter::RemoveTargetingMappingContext()
 		}
 	}
 }
+
+
+
 
 
 

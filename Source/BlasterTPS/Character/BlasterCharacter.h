@@ -88,6 +88,9 @@ public:
 	UInputAction* UltimateAction;
 	
 	UPROPERTY(EditDefaultsOnly, Category = "Input")
+	UInputAction* MeleeAction;
+	
+	UPROPERTY(EditDefaultsOnly, Category = "Input")
 	UInputAction* ConfirmAction;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Input")
@@ -133,6 +136,8 @@ public:
 
 	void UltimateButtonPressed(const FInputActionValue& Value);
 	
+	void MeleeButtonPressed(const FInputActionValue& Value);
+
 	bool IsWeaponEquipped();
 
 	bool IsAiming();
@@ -434,6 +439,18 @@ private:
 
 	UPROPERTY(EditAnywhere)
 	TSubclassOf<AWeapon> DefaultWeaponClass;
+
+	UPROPERTY(EditAnywhere, Category = Combat)
+	TSubclassOf<class AMeleeWeapon> MeleeWeaponClass;
+	
+	UPROPERTY(VisibleAnywhere, Replicated, Category = Combat)
+	AMeleeWeapon* MeleeWeapon;
+
+public:
+	FORCEINLINE AMeleeWeapon* GetMeleeWeapon() const { return MeleeWeapon; }
+
+	void SwitchMeleeWeaponVisibility(bool IsVisible);
+private: 
 
 	// GameplayEffect to apply when dealing health damage (optional, set in editor)
 	UPROPERTY(EditDefaultsOnly, Category = "Abilities")

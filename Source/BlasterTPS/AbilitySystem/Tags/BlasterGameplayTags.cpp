@@ -12,6 +12,7 @@ namespace BlasterGameplayTags
 		UE_DEFINE_GAMEPLAY_TAG_COMMENT(HitReact, "Abilities.HitReact", "Abilities tag used by hit react gameplay ability.");
 		UE_DEFINE_GAMEPLAY_TAG_COMMENT(Spike, "Abilities.Spike", "Abilities tag used by Spike gameplay ability.");
 		UE_DEFINE_GAMEPLAY_TAG_COMMENT(GravityTether, "Abilities.GravityTether", "Abilities tag used by Gravity Tether gameplay ability.");
+		UE_DEFINE_GAMEPLAY_TAG_COMMENT(MeleeSingle, "Abilities.MeleeSingle", "Abilities tag used by MeleeSingle gameplay ability.");
 	}
 	namespace SetByCaller
 	{
@@ -40,5 +41,10 @@ namespace BlasterGameplayTags
 	namespace Input
 	{
 		UE_DEFINE_GAMEPLAY_TAG_COMMENT(TetherSecPress, "Input.TetherSecPress", "Input tag send after press Gravity Tether second time.");
+	}
+
+	namespace Event
+	{
+		UE_DEFINE_GAMEPLAY_TAG_COMMENT(MeleeHit, "Event.MeleeHit", "Event tag send after ability melee attack.");
 	}
 }
