@@ -6,7 +6,9 @@
 
 AMeleeWeapon::AMeleeWeapon()
 {
-	FireType = EFireType::EFT_HitScan; 
+	FireType = EFireType::EFT_HitScan;
+	WeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	WeaponMesh->SetCollisionResponseToAllChannels(ECR_Ignore);
 }
 
 void AMeleeWeapon::PerformAttack(AActor* InstigatorActor, TSubclassOf<UGameplayEffect> DamageEffectClass, float DamageAmountOverride)

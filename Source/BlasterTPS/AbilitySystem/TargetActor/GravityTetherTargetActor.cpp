@@ -12,6 +12,7 @@ AGravityTetherTargetActor::AGravityTetherTargetActor()
 	ShouldProduceTargetDataOnServer = true;
 
 	SplineComponent = CreateDefaultSubobject<USplineComponent>(TEXT("SplineComp"));
+	SplineComponent->SetOnlyOwnerSee(true); // 确保样条线自身也是仅Owner可见
 	SetRootComponent(SplineComponent);
 }
 
@@ -226,6 +227,7 @@ void AGravityTetherTargetActor::UpdateSpline(const TArray<FVector>& PathPoints)
 		NewMesh->RegisterComponent();
 		NewMesh->AttachToComponent(SplineComponent, FAttachmentTransformRules::KeepRelativeTransform);
 		NewMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		NewMesh->SetOnlyOwnerSee(true);
 
 		// IMPORTANT: Set forward axis if your mesh is aligned along X, Y or Z. usually X for beams.
 		NewMesh->SetForwardAxis(ESplineMeshAxis::Z);

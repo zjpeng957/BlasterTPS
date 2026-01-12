@@ -19,6 +19,7 @@ namespace BlasterGameplayTags
 		UE_DECLARE_GAMEPLAY_TAG_EXTERN(Damage);
 		UE_DECLARE_GAMEPLAY_TAG_EXTERN(Mana);
 		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TetheredCount);
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(Duration);
 	}
 
 	namespace State

@@ -11,6 +11,7 @@ AGravityCore::AGravityCore()
 {
 	PrimaryActorTick.bCanEverTick = true;
 	bReplicates = true;
+	SetReplicateMovement(true);
 	
 	CollisionComponent = CreateDefaultSubobject<USphereComponent>(TEXT("SphereComp"));
 	CollisionComponent->InitSphereRadius(20.0f);
@@ -24,6 +25,7 @@ AGravityCore::AGravityCore()
 	GravityVFXComponent = CreateDefaultSubobject<UNiagaraComponent>(TEXT("GravityVFXComp"));
 	GravityVFXComponent->SetupAttachment(RootComponent);
 	GravityVFXComponent->bAutoActivate = false;
+	GravityVFXComponent->SetIsReplicated(true);
 
 	ProjectileMovement = CreateDefaultSubobject<UProjectileMovementComponent>(TEXT("ProjectileComp"));
 	ProjectileMovement->UpdatedComponent = CollisionComponent;
@@ -32,6 +34,7 @@ AGravityCore::AGravityCore()
 	ProjectileMovement->bRotationFollowsVelocity = true;
 	ProjectileMovement->bShouldBounce = false;
 	ProjectileMovement->ProjectileGravityScale = 1.0f; // 启用重力产生抛物线
+	ProjectileMovement->SetIsReplicated(true);
 }
 
 void AGravityCore::BeginPlay()
@@ -52,29 +55,8 @@ void AGravityCore::OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, 
 	if (!OtherActor || OtherActor == GetInstigator()) return;
 	if (OtherActor == this) return;
 
-	// Stop projectile to stick/float
-	if (ProjectileMovement)
-	{
-		ProjectileMovement->StopMovementImmediately();
-		ProjectileMovement->ProjectileGravityScale = 0.f;
-	}
-
-	// Disable collision to prevent further hits/overlaps
-	CollisionComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-
-	if (MeshComponent)
-	{
-		MeshComponent->SetVisibility(false);
-	}
-	
-	// Activate VFX
-	if (GravityVFXComponent)
-	{
-		GravityVFXComponent->Activate();
-	}
-
-	// Start Gravity Effect
-	// bIsGravityActive = true; // Logic moved to AbilityTask, but keeping variable logic simply for state if needed.
+	// Broadcast visual effects to all clients
+	MulticastHit();
 
 	// Apply damage if logic requires (e.g. direct hit damage)
 	if (DamageEffectSpecHandle.IsValid())
@@ -90,6 +72,33 @@ void AGravityCore::OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, 
 	SetLifeSpan(8.0f);
 	
 	OnProjectileHit.Broadcast(Hit);
+}
+
+void AGravityCore::MulticastHit_Implementation()
+{
+	// Stop projectile to stick/float
+	if (ProjectileMovement)
+	{
+		ProjectileMovement->StopMovementImmediately();
+		ProjectileMovement->ProjectileGravityScale = 0.f;
+	}
+
+	// Disable collision to prevent further hits/overlaps
+	if (CollisionComponent)
+	{
+		CollisionComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	}
+
+	if (MeshComponent)
+	{
+		MeshComponent->SetVisibility(false);
+	}
+	
+	// Activate VFX
+	if (GravityVFXComponent)
+	{
+		GravityVFXComponent->Activate();
+	}
 }
 
 void AGravityCore::Tick(float DeltaTime)
@@ -116,4 +125,15 @@ void AGravityCore::OnOverlap(UPrimitiveComponent* OverlappedComponent, AActor* O
 	}
 
 	Destroy();
+}
+
+void AGravityCore::InitializeLaunchVelocity(const FVector& NewVelocity)
+{
+	if (ProjectileMovement)
+	{
+		// Treat as world-space velocity
+		ProjectileMovement->Velocity = NewVelocity;
+		ProjectileMovement->UpdateComponentVelocity();
+		ProjectileMovement->Activate(true);
+	}
 }

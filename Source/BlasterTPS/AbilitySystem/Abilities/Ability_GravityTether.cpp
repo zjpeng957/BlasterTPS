@@ -39,10 +39,13 @@ void UAbility_GravityTether::ActivateAbility(const FGameplayAbilitySpecHandle Ha
 	AActor* OwnerActor = GetOwningActorFromActorInfo();
 	APawn* AvatarPawn = Cast<APawn>(GetAvatarActorFromActorInfo());
 
+	// Set Owner to AvatarPawn so SetOnlyOwnerSee works correctly on clients
+	AActor* TargetActorOwner = AvatarPawn ? AvatarPawn : OwnerActor;
+
 	AGameplayAbilityTargetActor* TargetActor = GetWorld()->SpawnActorDeferred<AGameplayAbilityTargetActor>(
 		TargetActorClass,
 		FTransform::Identity,
-		OwnerActor,
+		TargetActorOwner,
 		AvatarPawn,
 		ESpawnActorCollisionHandlingMethod::AlwaysSpawn
 	);
@@ -77,6 +80,13 @@ void UAbility_GravityTether::ActivateAbility(const FGameplayAbilitySpecHandle Ha
 
 void UAbility_GravityTether::OnTargetDataReady(const FGameplayAbilityTargetDataHandle& Data)
 {
+	// Only the server should spawn and launch the real projectile so movement is authoritative.
+	AActor* AvatarActor = GetAvatarActorFromActorInfo();
+	if (!AvatarActor || !AvatarActor->HasAuthority())
+	{
+		return;
+	}
+
 	// 玩家确认发射，此时提交资源 (消耗 Mana,计算 Cooldown)
 	if (!CommitAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo))
 	{
@@ -105,7 +115,6 @@ void UAbility_GravityTether::OnTargetDataReady(const FGameplayAbilityTargetDataH
 		{
 			FTransform SpawnTransform = OwningPawn->GetActorTransform();
 			
-			// Use the SpawnLocation from TargetActor if available to ensure consistency
 			FVector SpawnLocation;
 			if (!ValidSpawnLocation.IsZero())
 			{
@@ -113,12 +122,10 @@ void UAbility_GravityTether::OnTargetDataReady(const FGameplayAbilityTargetDataH
 			}
 			else
 			{
-				// Fallback calculation
 				SpawnLocation = SpawnTransform.GetLocation() + (SpawnTransform.GetRotation().GetForwardVector() * 100.f);
 			}
 			SpawnTransform.SetLocation(SpawnLocation);
 
-			// 延迟生成以设置参数
 			Projectile = GetWorld()->SpawnActorDeferred<AGravityCore>(
 				ProjectileClass,
 				SpawnTransform,
@@ -129,24 +136,19 @@ void UAbility_GravityTether::OnTargetDataReady(const FGameplayAbilityTargetDataH
 
 			if (Projectile.IsValid())
 			{
-				// 创建伤害 Spec
 				if (DamageEffectClass)
 				{
 					FGameplayEffectSpecHandle DamageSpecHandle = MakeOutgoingGameplayEffectSpec(DamageEffectClass);
-					// 如果需要 SetByCaller 设置伤害数值，可以在这里操作
-					// DamageSpecHandle.Data->SetSetByCallerMagnitude(...)
-					
 					Projectile->DamageEffectSpecHandle = DamageSpecHandle;
 				}
-				
-				// Calculate parabolic velocity to hit the target
+
 				float OverrideGravityZ = 0.f;
-				if(Projectile->ProjectileMovement)
+				if (Projectile->ProjectileMovement)
 				{
 					OverrideGravityZ = GetWorld()->GetGravityZ() * Projectile->ProjectileMovement->ProjectileGravityScale;
 				}
 
-				FVector TossVelocity;
+				FVector TossVelocity = FVector::ZeroVector;
 				bool bHaveSolution = UGameplayStatics::SuggestProjectileVelocity_CustomArc(
 					this,
 					TossVelocity,
@@ -155,28 +157,26 @@ void UAbility_GravityTether::OnTargetDataReady(const FGameplayAbilityTargetDataH
 					OverrideGravityZ,
 					0.5f
 				);
-				
-				if (bHaveSolution)
+
+				if (!bHaveSolution)
 				{
-					// Align spawn rotation with velocity to prevent conflict during FinishSpawning
-					// (FinishSpawning applies SpawnTransform rotation to the actor)
+					if (Projectile->ProjectileMovement)
+					{
+						const FVector LaunchDirection = (TargetLocation - SpawnLocation).GetSafeNormal();
+						TossVelocity = LaunchDirection * Projectile->ProjectileMovement->InitialSpeed;
+					}
+				}
+
+				if (!TossVelocity.IsNearlyZero())
+				{
 					SpawnTransform.SetRotation(TossVelocity.Rotation().Quaternion());
 				}
-				else
-				{
-					// Fallback to straight line if no solution
-					FVector LaunchDirection = (TargetLocation - SpawnLocation).GetSafeNormal();
-					TossVelocity = LaunchDirection * Projectile->ProjectileMovement->InitialSpeed;
-					SpawnTransform.SetRotation(TossVelocity.Rotation().Quaternion());
-				}
+
 				Projectile->OnProjectileHit.AddDynamic(this, &UAbility_GravityTether::OnGravityCoreHit);
 				Projectile->FinishSpawning(SpawnTransform);
-				
-				// Re-apply velocity after FinishSpawning to ensure it persists vs any initialization logic
-				if (Projectile->ProjectileMovement)
-				{
-					Projectile->ProjectileMovement->Velocity = TossVelocity;
-				}
+
+				// Authoritative launch velocity initialization.
+				Projectile->InitializeLaunchVelocity(TossVelocity);
 			}
 		}
 	}
@@ -248,7 +248,7 @@ void UAbility_GravityTether::OnTetherForceApplied(const TArray<AActor*>& Affecte
 				// Usually "State.Tethered" GE is Infinite/Duration. If Duration, set it to match TetherDuration.
 				// If the GE blueprint already has duration set, this might override or we assume it matches.
 				// Best practice: Set duration dynamically.
-				SpecHandle.Data->SetSetByCallerMagnitude(FGameplayTag::RequestGameplayTag(FName("Data.Duration")), TetherDuration);
+				SpecHandle.Data->SetSetByCallerMagnitude(BlasterGameplayTags::SetByCaller::Duration, TetherDuration);
 				
 				TargetASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
 			}

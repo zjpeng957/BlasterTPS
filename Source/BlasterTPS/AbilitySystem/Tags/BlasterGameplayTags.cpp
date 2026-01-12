@@ -19,6 +19,7 @@ namespace BlasterGameplayTags
 		UE_DEFINE_GAMEPLAY_TAG_COMMENT(Damage, "SetByCaller.Damage", "SetByCaller tag used by damage gameplay effects.");
 		UE_DEFINE_GAMEPLAY_TAG_COMMENT(Mana, "SetByCaller.Mana", "SetByCaller tag used by mana gameplay effects.");
 		UE_DEFINE_GAMEPLAY_TAG_COMMENT(TetheredCount, "SetByCaller.TetheredCount", "SetByCaller tag used by tether gameplay effects.");
+		UE_DEFINE_GAMEPLAY_TAG_COMMENT(Duration, "SetByCaller.Duration", "SetByCaller tag used to pass duration.");
 	}
 
 	namespace State

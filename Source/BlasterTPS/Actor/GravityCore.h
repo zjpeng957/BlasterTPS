@@ -20,6 +20,10 @@ class BLASTERTPS_API AGravityCore : public AActor
 public:	
 	AGravityCore();
 
+	// Called by the spawning ability (server) to initialize the projectile's launch velocity.
+	UFUNCTION(BlueprintCallable, Category = "Movement")
+	void InitializeLaunchVelocity(const FVector& NewVelocity);
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Movement")
 	UProjectileMovementComponent* ProjectileMovement;
 
@@ -45,6 +49,9 @@ protected:
 
 	UFUNCTION()
 	void OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit);
+
+	UFUNCTION(NetMulticast, Reliable)
+	void MulticastHit();
 
 	virtual void Tick(float DeltaTime) override;
 	// virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override; // Removed EndPlay override as it was for Cue cleanup

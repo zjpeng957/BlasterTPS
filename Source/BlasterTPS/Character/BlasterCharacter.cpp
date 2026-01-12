@@ -1085,7 +1085,16 @@ void ABlasterCharacter::StartDissolve()
 
 void ABlasterCharacter::SwitchMeleeWeaponVisibility(bool IsVisible)
 {
-	if (MeleeWeapon) MeleeWeapon->SetActorHiddenInGame(!IsVisible);
+	if (MeleeWeapon)
+	{
+		MeleeWeapon->SetActorHiddenInGame(!IsVisible);
+
+		// When hidden, fully ignore collision/overlaps so it won't block bullets or interfere with targeting traces.
+		MeleeWeapon->SetActorEnableCollision(IsVisible);
+
+		// Optional: save some perf / prevent any tick-driven side effects.
+		MeleeWeapon->SetActorTickEnabled(IsVisible);
+	}
 	if (AWeapon* EquippedWeapon = GetEquippedWeapon())
 	{
 		EquippedWeapon->SetActorHiddenInGame(IsVisible);
@@ -1302,6 +1311,8 @@ void ABlasterCharacter::RemoveTargetingMappingContext()
 		}
 	}
 }
+
+
 
 
 
