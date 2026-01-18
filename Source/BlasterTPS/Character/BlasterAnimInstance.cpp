@@ -14,7 +14,7 @@ void UBlasterAnimInstance::NativeInitializeAnimation()
 	BlasterCharacter = Cast<ABlasterCharacter>(TryGetPawnOwner());
 }
 
-void UBlasterAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
+void UBlasterAnimInstance::NativeThreadSafeUpdateAnimation(float DeltaSeconds)
 {
 	Super::NativeUpdateAnimation(DeltaSeconds);
 
@@ -39,7 +39,7 @@ void UBlasterAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	TurningInPlace = BlasterCharacter->GetTurningInPlace();
 
 	// Offset Yaw for Strafing
-	FRotator AnimRotation = BlasterCharacter->GetBaseAimRotation(); //BaseAnimRotationÊÇ¸´ÖÆµÄ
+	FRotator AnimRotation = BlasterCharacter->GetBaseAimRotation(); //BaseAnimRotationï¿½Ç¸ï¿½ï¿½Æµï¿½
 	FRotator MovementRotation = UKismetMathLibrary::MakeRotFromX(BlasterCharacter->GetVelocity());
 	FRotator DeltaRot = UKismetMathLibrary::NormalizedDeltaRotator(MovementRotation, AnimRotation);
 	DeltaRotation = FMath::RInterpTo(DeltaRotation, DeltaRot, DeltaSeconds, 6.f);

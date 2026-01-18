@@ -2,6 +2,7 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "AbilitySystemComponent.h"
 #include "TimerManager.h"
+#include "BlasterTPS/AbilitySystem/Tags/BlasterGameplayTags.h"
 #include "BlasterTPS/Character/BlasterCharacterBase.h"
 #include  "GameplayAbilities/Public/Abilities/Tasks/AbilityTask_ApplyRootMotionConstantForce.h"
 #include  "GameplayAbilities/Public/Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
@@ -65,7 +66,8 @@ void UAbility_Dash::ActivateAbility(const FGameplayAbilitySpecHandle Handle, con
 	// 4. 绑定结束回调
 	RootMotionTask->OnFinish.AddDynamic(this, &UAbility_Dash::OnDashFinished);
 	RootMotionTask->ReadyForActivation();
-}
+	ASC->ExecuteGameplayCue(FGameplayTag::RequestGameplayTag(FName("GameplayCue.Dash")));
+} 
 
 void UAbility_Dash::OnDashFinished()
 { 

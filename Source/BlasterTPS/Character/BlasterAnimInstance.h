@@ -18,7 +18,8 @@ class BLASTERTPS_API UBlasterAnimInstance : public UAnimInstance
 
 public:
 	virtual void NativeInitializeAnimation() override;
-	virtual void NativeUpdateAnimation(float DeltaSeconds) override;
+	virtual void NativeThreadSafeUpdateAnimation(float DeltaSeconds) override;
+	// virtual void NativeUpdateAnimation(float DeltaSeconds) override;
 
 private:
 	UPROPERTY(BlueprintReadOnly, Category = Character, Meta = (AllowPrivateAccess = "true"))
